@@ -1,0 +1,55 @@
+-- shared/src/commonMain/sqldelight/com/techfeed/db/FeedItem.sq
+-- SQLDelight reads this file and generates type-safe Kotlin queries automatically.
+-- No annotations, no KSP, no KAPT — just plain SQL.
+
+CREATE TABLE IF NOT EXISTS feed_item (
+    id               TEXT    NOT NULL PRIMARY KEY,
+    title            TEXT    NOT NULL,
+    -- content_blocks is a serialized JSON string: [{type, value, url, style}]
+    -- We store it as TEXT and deserialize in the repository layer
+    content_blocks   TEXT    NOT NULL DEFAULT '[]',
+    -- summary is a short plain-text preview for the card UI
+    summary          TEXT    NOT NULL DEFAULT '',
+    url              TEXT    NOT NULL,
+    source           TEXT    NOT NULL,
+    tags             TEXT    NOT NULL DEFAULT '',   -- comma-separated
+    image_url        TEXT,
+    read_time_minutes INTEGER NOT NULL DEFAULT 0,
+    filter_tag       TEXT    NOT NULL DEFAULT 'all', -- which tag page this belongs to
+    page             INTEGER NOT NULL DEFAULT 0,
+    cached_at        INTEGER NOT NULL               -- epoch millis
+);
+
+CREATE INDEX IF NOT EXISTS idx_feed_filter ON feed_item(filter_tag, page);
+CREATE INDEX IF NOT EXISTS idx_feed_cached ON feed_item(cached_at);
+
+-- ── Queries ───────────────────────────────────────────────────────────────────
+
+selectByTagAndPage:
+SELECT * FROM feed_item
+WHERE filter_tag = :tag AND page = :page
+ORDER BY cached_at DESC;
+
+insertOrReplace:
+INSERT OR REPLACE INTO feed_item VALUES (
+    :id, :title, :content_blocks, :summary, :url,
+    :source, :tags, :image_url, :read_time_minutes,
+    :filter_tag, :page, :cached_at
+);
+
+deleteByTag:
+DELETE FROM feed_item WHERE filter_tag = :tag;
+
+deleteStale:
+DELETE FROM feed_item WHERE cached_at < :threshold;
+
+search:
+SELECT * FROM feed_item
+WHERE title LIKE '%' || :query || '%'
+   OR summary LIKE '%' || :query || '%'
+   OR tags LIKE '%' || :query || '%'
+ORDER BY cached_at DESC
+LIMIT 50;
+
+countAll:
+SELECT COUNT(*) FROM feed_item;

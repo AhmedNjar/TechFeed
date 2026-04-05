@@ -1,0 +1,39 @@
+-- shared/src/commonMain/sqldelight/com/techfeed/db/Bookmark.sq
+
+CREATE TABLE IF NOT EXISTS bookmark (
+    id               TEXT    NOT NULL PRIMARY KEY,
+    title            TEXT    NOT NULL,
+    content_blocks   TEXT    NOT NULL DEFAULT '[]',
+    summary          TEXT    NOT NULL DEFAULT '',
+    url              TEXT    NOT NULL,
+    source           TEXT    NOT NULL,
+    tags             TEXT    NOT NULL DEFAULT '',
+    image_url        TEXT,
+    read_time_minutes INTEGER NOT NULL DEFAULT 0,
+    saved_at         INTEGER NOT NULL               -- epoch millis
+);
+
+CREATE INDEX IF NOT EXISTS idx_bookmark_saved ON bookmark(saved_at DESC);
+
+-- ── Queries ───────────────────────────────────────────────────────────────────
+
+selectAll:
+SELECT * FROM bookmark ORDER BY saved_at DESC;
+
+selectById:
+SELECT * FROM bookmark WHERE id = :id;
+
+isBookmarked:
+SELECT COUNT(*) > 0 FROM bookmark WHERE id = :id;
+
+insert:
+INSERT OR REPLACE INTO bookmark VALUES (
+    :id, :title, :content_blocks, :summary, :url,
+    :source, :tags, :image_url, :read_time_minutes, :saved_at
+);
+
+deleteById:
+DELETE FROM bookmark WHERE id = :id;
+
+count:
+SELECT COUNT(*) FROM bookmark;
