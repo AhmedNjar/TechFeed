@@ -4,6 +4,10 @@ import com.techfeed.data.model.FeedItem
 import com.techfeed.data.model.FeedTag
 import com.techfeed.domain.BookmarkRepository
 import com.techfeed.domain.FeedRepository
+import com.techfeed.domain.ForYouRepository
+import com.techfeed.domain.ReadingStats
+import com.techfeed.domain.RelatedArticlesRepository
+import com.techfeed.domain.StatsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -27,6 +31,15 @@ sealed interface FeedIntent {
     data object ShowBookmarks                     : FeedIntent
     data object HideBookmarks                     : FeedIntent
     data class  ShareItem(val item: FeedItem)     : FeedIntent
+
+    // ── NEW: For You ─────────────────────────────────────────────────────────
+    data object ShowForYou                        : FeedIntent
+    data object HideForYou                        : FeedIntent
+    data object RefreshForYou                     : FeedIntent
+
+    // ── NEW: Stats ───────────────────────────────────────────────────────────
+    data object ShowStats                         : FeedIntent
+    data object HideStats                         : FeedIntent
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -48,6 +61,20 @@ data class FeedState(
     val bookmarkIds: Set<String>      = emptySet(),
     val bookmarkCount: Long           = 0,
     val showBookmarks: Boolean        = false,
+
+    // ── NEW: For You ─────────────────────────────────────────────────────────
+    val showForYou: Boolean           = false,
+    val isForYouLoading: Boolean      = false,
+    val forYouItems: List<FeedItem>   = emptyList(),
+    val forYouBasedOnTags: List<String> = emptyList(),
+
+    // ── NEW: Related Articles (shown inside ReadModeScreen) ───────────────────
+    val relatedArticles: List<FeedItem> = emptyList(),
+    val isRelatedLoading: Boolean       = false,
+
+    // ── NEW: Stats ───────────────────────────────────────────────────────────
+    val showStats: Boolean            = false,
+    val readingStats: ReadingStats    = ReadingStats(),
 )
 
 // ── Effects ───────────────────────────────────────────────────────────────────
@@ -63,6 +90,9 @@ sealed interface FeedEffect {
 class FeedViewModel(
     private val feedRepo: FeedRepository,
     private val bookmarkRepo: BookmarkRepository,
+    private val forYouRepo: ForYouRepository,
+    private val statsRepo: StatsRepository,
+    private val relatedRepo: RelatedArticlesRepository,
 ) {
     private val job   = SupervisorJob()
     private val scope = CoroutineScope(job + Dispatchers.Main)
@@ -79,6 +109,7 @@ class FeedViewModel(
         onIntent(FeedIntent.LoadFeed)
         observeBookmarks()
         observeSearch()
+        observeStats()
     }
 
     fun onIntent(intent: FeedIntent) = when (intent) {
@@ -86,8 +117,8 @@ class FeedViewModel(
         FeedIntent.RefreshFeed           -> loadFeed(reset = true, isRefresh = true)
         FeedIntent.LoadNextPage          -> loadNextPage()
         is FeedIntent.SelectTag          -> onTagSelected(intent.tag)
-        is FeedIntent.SelectItem         -> _state.update { it.copy(selectedItem = intent.item) }
-        FeedIntent.DismissDetail         -> _state.update { it.copy(selectedItem = null) }
+        is FeedIntent.SelectItem         -> selectItem(intent.item)
+        FeedIntent.DismissDetail         -> _state.update { it.copy(selectedItem = null, relatedArticles = emptyList()) }
         FeedIntent.DismissError          -> _state.update { it.copy(error = null) }
         is FeedIntent.UpdateSearch       -> onSearchChanged(intent.query)
         FeedIntent.ClearSearch           -> clearSearch()
@@ -97,6 +128,13 @@ class FeedViewModel(
         is FeedIntent.ShareItem          -> scope.launch {
             _effects.emit(FeedEffect.Share(intent.item.url, intent.item.title))
         }
+
+        FeedIntent.ShowForYou            -> { _state.update { it.copy(showForYou = true) }; loadForYou() }
+        FeedIntent.HideForYou            -> _state.update { it.copy(showForYou = false) }
+        FeedIntent.RefreshForYou         -> loadForYou()
+
+        FeedIntent.ShowStats             -> _state.update { it.copy(showStats = true) }
+        FeedIntent.HideStats             -> _state.update { it.copy(showStats = false) }
     }
 
     // ── Feed ──────────────────────────────────────────────────────────────────
@@ -163,6 +201,19 @@ class FeedViewModel(
         loadFeed(reset = false)
     }
 
+    // ── Item selection (records read + loads related) ─────────────────────────
+
+    private fun selectItem(item: FeedItem) {
+        _state.update { it.copy(selectedItem = item, relatedArticles = emptyList(), isRelatedLoading = true) }
+        scope.launch {
+            statsRepo.recordRead(item)
+        }
+        scope.launch {
+            val related = relatedRepo.getRelated(item)
+            _state.update { it.copy(relatedArticles = related, isRelatedLoading = false) }
+        }
+    }
+
     // ── Search ────────────────────────────────────────────────────────────────
 
     private fun onSearchChanged(query: String) {
@@ -209,6 +260,32 @@ class FeedViewModel(
             _effects.emit(FeedEffect.ShowSnackbar(
                 if (wasBookmarked) "Removed from bookmarks" else "Saved ✓"
             ))
+        }
+    }
+
+    // ── For You ───────────────────────────────────────────────────────────────
+
+    private fun loadForYou() {
+        _state.update { it.copy(isForYouLoading = true) }
+        scope.launch {
+            val result = forYouRepo.loadForYouFeed()
+            _state.update {
+                it.copy(
+                    isForYouLoading    = false,
+                    forYouItems        = result.items,
+                    forYouBasedOnTags  = result.basedOnTags,
+                )
+            }
+        }
+    }
+
+    // ── Stats ─────────────────────────────────────────────────────────────────
+
+    private fun observeStats() {
+        scope.launch {
+            statsRepo.stats.collect { stats ->
+                _state.update { it.copy(readingStats = stats) }
+            }
         }
     }
 

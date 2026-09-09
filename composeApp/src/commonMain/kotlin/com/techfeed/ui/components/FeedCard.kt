@@ -21,16 +21,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.techfeed.data.model.FeedItem
-import com.techfeed.data.model.FeedSource
-import com.techfeed.data.model.displayName
 import com.techfeed.ui.theme.TechFeedColors
 import com.techfeed.ui.theme.TechFeedTheme
 import com.techfeed.ui.theme.TechFeedType
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
-import techfeed.composeapp.generated.resources.Res
-import techfeed.composeapp.generated.resources.round_bookmark_24
-import techfeed.composeapp.generated.resources.rounded_bookmark_24
 
 @Composable
 fun FeedCard(
@@ -40,6 +34,7 @@ fun FeedCard(
     onBookmark: () -> Unit,
     onShare: () -> Unit,
     modifier: Modifier = Modifier,
+    index: Int = 0,
 ) {
     val cardShape = RoundedCornerShape(16.dp)
 
@@ -81,7 +76,7 @@ fun FeedCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment     = Alignment.CenterVertically,
                 ) {
-                    SourceBadge(source = item.source)
+                    SourceBadge(sourceName = item.source)
                     if (item.readTimeMinutes > 0) {
                         Text(
                             text  = "${item.readTimeMinutes} min read",
@@ -149,32 +144,24 @@ fun FeedCard(
                             modifier           = Modifier.size(18.dp),
                         )
                     }
-                    IconButton(onClick = onBookmark, modifier = Modifier.size(36.dp)) {
-                        Icon(
-                            painter = if (isBookmarked) painterResource(Res.drawable.round_bookmark_24)
-                                          else          painterResource(Res.drawable.rounded_bookmark_24),
-                            contentDescription = "Bookmark",
-                            tint = if (isBookmarked) TechFeedColors.Accent
-                                   else             TechFeedColors.TextMuted,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
+                    AnimatedBookmarkIcon(
+                        isBookmarked = isBookmarked,
+                        onClick      = onBookmark,
+                    )
                 }
             }
         }
     }
 }
 
-// ── Source Badge ──────────────────────────────────────────────────────────────
-
 @Composable
-private fun SourceBadge(source: FeedSource) {
-    val dotColor = when (source) {
-        FeedSource.REDDIT      -> TechFeedColors.RedditOrange
-        FeedSource.DEV_TO      -> TechFeedColors.DevToBlue
-        FeedSource.MEDIUM      -> TechFeedColors.MediumGreen
-        FeedSource.HACKER_NEWS -> TechFeedColors.HNOrange
-        FeedSource.GITHUB      -> TechFeedColors.TextSecondary
+private fun SourceBadge(sourceName: String) {
+    val dotColor = when (sourceName.lowercase()) {
+        "reddit"       -> TechFeedColors.RedditOrange
+        "dev.to"       -> TechFeedColors.DevToBlue
+        "medium"       -> TechFeedColors.MediumGreen
+        "hacker news"  -> TechFeedColors.HNOrange
+        else           -> TechFeedColors.TextSecondary
     }
     Row(
         verticalAlignment     = Alignment.CenterVertically,
@@ -186,11 +173,9 @@ private fun SourceBadge(source: FeedSource) {
                 .clip(CircleShape)
                 .background(dotColor)
         )
-        Text(source.displayName, style = TechFeedType.Caption, color = TechFeedColors.TextMuted)
+        Text(sourceName, style = TechFeedType.Caption, color = TechFeedColors.TextMuted)
     }
 }
-
-// ── Tag Pill ──────────────────────────────────────────────────────────────────
 
 @Composable
 fun TagPill(label: String) {
@@ -204,8 +189,6 @@ fun TagPill(label: String) {
         Text(text = "#$label", style = TechFeedType.Mono)
     }
 }
-
-// ── Skeleton Card ─────────────────────────────────────────────────────────────
 
 @Composable
 fun FeedCardSkeleton(modifier: Modifier = Modifier) {
@@ -246,7 +229,7 @@ fun FeedCardPreview() {
         title = "Modern Android Development in 2024",
         summary = "Explore the latest trends in Jetpack Compose and KMP.",
         url = "https://example.com/1",
-        source = FeedSource.DEV_TO,
+        source = "Dev.to",
         tags = listOf("Android", "Kotlin"),
         readTimeMinutes = 5
     )

@@ -1,0 +1,17 @@
+- [x] Move upgraded files to `composeApp`
+    - [x] Update `FeedViewModel.kt`
+    - [x] Update `AppModule.kt`
+    - [x] Update `FeedItem.kt`
+    - [x] Update `FeedApiClient.kt`
+    - [x] Move new UI components and screens
+    - [x] Move new repositories and domain models
+- [x] Move backend files to `server` directory
+    - [x] Create `server` structure
+    - [x] Move domain, controller, repository, and config files
+    - [x] Move resources
+- [x] Move scraper files to `scraper` directory
+    - [x] Create `scraper` structure
+    - [x] Move python files and requirements
+    - [x] Move Dockerfile and html
+- [x] Cleanup `temp` directory
+- [ ] Verify changes

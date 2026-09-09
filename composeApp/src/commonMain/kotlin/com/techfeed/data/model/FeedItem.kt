@@ -4,7 +4,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 // ── Content Block — the unit the backend sends instead of Markdown ─────────────
-// Backend sends: [{"type":"heading","value":"Intro"},{"type":"image","url":"..."}]
 
 @Serializable
 data class ContentBlock(
@@ -32,42 +31,26 @@ data class FeedItem(
     val title: String,
 
     /** Structured content blocks — rendered by ContentRenderer composable */
-    @SerialName("content_blocks")
     val contentBlocks: List<ContentBlock> = emptyList(),
 
     /** Short plain-text preview — shown on feed cards */
     val summary: String = "",
 
     val url: String,
-    val source: FeedSource,
+
+    /**
+     * Plain string, not a closed enum.
+     */
+    val source: String = "Unknown",
+
     val tags: List<String> = emptyList(),
 
-    @SerialName("image_url")
     val imageUrl: String? = null,
 
-    @SerialName("read_time_minutes")
     val readTimeMinutes: Int = 0,
 
-    @SerialName("published_at")
     val publishedAt: String = "",
 )
-
-@Serializable
-enum class FeedSource {
-    @SerialName("reddit")      REDDIT,
-    @SerialName("devto")       DEV_TO,
-    @SerialName("medium")      MEDIUM,
-    @SerialName("hackernews")  HACKER_NEWS,
-    @SerialName("github")      GITHUB,
-}
-
-val FeedSource.displayName get() = when (this) {
-    FeedSource.REDDIT      -> "Reddit"
-    FeedSource.DEV_TO      -> "Dev.to"
-    FeedSource.MEDIUM      -> "Medium"
-    FeedSource.HACKER_NEWS -> "Hacker News"
-    FeedSource.GITHUB      -> "GitHub"
-}
 
 // ── Paginated Response ────────────────────────────────────────────────────────
 
@@ -75,8 +58,8 @@ val FeedSource.displayName get() = when (this) {
 data class FeedResponse(
     val items: List<FeedItem>,
     val page: Int,
-    @SerialName("total_pages") val totalPages: Int,
-    @SerialName("has_next")    val hasNext: Boolean,
+    val totalPages: Int,
+    val hasNext: Boolean,
 )
 
 // ── Filter Tags ───────────────────────────────────────────────────────────────

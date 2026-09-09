@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TechHub Admin</title>
+<style>
+  :root {
+    --bg: #0A0C10;
+    --surface: #10131A;
+    --surface2: #181C26;
+    --border: #1E2330;
+    --accent: #00E5FF;
+    --text: #F0F4FF;
+    --muted: #8A94A8;
+    --error: #FF4D6D;
+    --success: #00E096;
+    --warn: #FFB800;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 24px;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+  }
+  .header h1 {
+    font-size: 22px;
+    margin: 0;
+    letter-spacing: -0.5px;
+  }
+  .header .accent { color: var(--accent); }
+  #refreshBtn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  #refreshBtn:hover { border-color: var(--accent); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .stat-card .label {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .stat-card .value {
+    font-size: 28px;
+    font-weight: 700;
+  }
+  .stat-card.technical .value { color: var(--success); }
+  .stat-card.pending .value   { color: var(--warn); }
+  .stat-card.error .value     { color: var(--error); }
+  .stat-card.spam .value      { color: var(--muted); }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .section h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--muted);
+    margin: 0 0 16px 0;
+  }
+
+  .source-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .source-row .name { width: 140px; font-size: 13px; }
+  .source-row .bar-bg {
+    flex: 1;
+    height: 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .source-row .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #00AABE);
+    border-radius: 4px;
+    transition: width 0.4s ease;
+  }
+  .source-row .count { width: 50px; text-align: right; font-size: 13px; color: var(--muted); }
+
+  .health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .health-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .health-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .health-dot.up { background: var(--success); box-shadow: 0 0 8px var(--success); }
+  .health-dot.down { background: var(--error); box-shadow: 0 0 8px var(--error); }
+  .health-dot.unknown { background: var(--muted); }
+  .health-name { font-size: 13px; font-weight: 600; }
+  .health-status { font-size: 11px; color: var(--muted); }
+
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .action-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: monospace;
+  }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  #log {
+    background: #000;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: monospace;
+    font-size: 12px;
+    color: #0f0;
+    max-height: 160px;
+    overflow-y: auto;
+    margin-top: 12px;
+    white-space: pre-wrap;
+  }
+
+  .secret-row {
+    display: flex; gap: 8px; margin-bottom: 16px;
+  }
+  .secret-row input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-family: monospace;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Tech<span class="accent">Hub</span> Admin</h1>
+  <button id="refreshBtn" onclick="loadAll()">↻ Refresh</button>
+</div>
+
+<div class="grid">
+  <div class="stat-card technical">
+    <div class="label">Technical</div>
+    <div class="value" id="statTechnical">—</div>
+  </div>
+  <div class="stat-card pending">
+    <div class="label">Pending</div>
+    <div class="value" id="statPending">—</div>
+  </div>
+  <div class="stat-card spam">
+    <div class="label">Spam</div>
+    <div class="value" id="statSpam">—</div>
+  </div>
+  <div class="stat-card error">
+    <div class="label">Error</div>
+    <div class="value" id="statError">—</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Posts by Source</h2>
+  <div id="sourceBreakdown"></div>
+</div>
+
+<div class="section">
+  <h2>System Health</h2>
+  <div class="health-grid" id="healthGrid"></div>
+</div>
+
+<div class="section">
+  <h2>Manual Ingestion Triggers</h2>
+  <div class="secret-row">
+    <input type="password" id="adminSecret" placeholder="X-Admin-Secret header value">
+  </div>
+  <div class="actions">
+    <button class="action-btn" onclick="trigger('rss')">▶ Run RSS</button>
+    <button class="action-btn" onclick="trigger('reddit')">▶ Run Reddit</button>
+    <button class="action-btn" onclick="trigger('github')">▶ Run GitHub</button>
+    <button class="action-btn" onclick="trigger('blogs')">▶ Run Blogs</button>
+  </div>
+  <div id="log"></div>
+</div>
+
+<script>
+const API_BASE = ''; // same origin
+
+async function loadStats() {
+  const res = await fetch(`${API_BASE}/api/stats`);
+  const data = await res.json();
+
+  document.getElementById('statTechnical').textContent = data.totalTechnical;
+  document.getElementById('statPending').textContent   = data.totalPending;
+  document.getElementById('statSpam').textContent      = data.totalSpam;
+  document.getElementById('statError').textContent     = data.totalError;
+
+  const sourceDiv = document.getElementById('sourceBreakdown');
+  sourceDiv.innerHTML = '';
+  const counts = data.sourceCounts || {};
+  const max = Math.max(1, ...Object.values(counts));
+
+  if (Object.keys(counts).length === 0) {
+    sourceDiv.innerHTML = '<div style="color:var(--muted);font-size:13px;">No technical posts yet</div>';
+    return;
+  }
+
+  for (const [source, count] of Object.entries(counts)) {
+    const pct = (count / max) * 100;
+    sourceDiv.innerHTML += `
+      <div class="source-row">
+        <div class="name">${source}</div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="count">${count}</div>
+      </div>`;
+  }
+}
+
+async function loadHealth() {
+  const grid = document.getElementById('healthGrid');
+  try {
+    const res = await fetch(`${API_BASE}/actuator/health`);
+    const data = await res.json();
+    const components = data.components || {};
+
+    grid.innerHTML = '';
+    for (const [name, comp] of Object.entries(components)) {
+      const status = comp.status || 'UNKNOWN';
+      const dotClass = status === 'UP' ? 'up' : status === 'DOWN' ? 'down' : 'unknown';
+      grid.innerHTML += `
+        <div class="health-item">
+          <div class="health-dot ${dotClass}"></div>
+          <div>
+            <div class="health-name">${name}</div>
+            <div class="health-status">${status}</div>
+          </div>
+        </div>`;
+    }
+  } catch (e) {
+    grid.innerHTML = '<div style="color:var(--error);font-size:13px;">Could not reach /actuator/health</div>';
+  }
+}
+
+function log(msg) {
+  const el = document.getElementById('log');
+  const time = new Date().toLocaleTimeString();
+  el.textContent += `[${time}] ${msg}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+async function trigger(type) {
+  const secret = document.getElementById('adminSecret').value;
+  if (!secret) { log('⚠ Enter the admin secret first'); return; }
+
+  log(`Triggering ${type} ingestion...`);
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/ingest/${type}`, {
+      method: 'POST',
+      headers: { 'X-Admin-Secret': secret },
+    });
+    if (res.status === 401) { log(`✗ Unauthorized — check the secret`); return; }
+    const data = await res.json();
+    log(`✓ ${type}: ${JSON.stringify(data)}`);
+    loadStats();
+  } catch (e) {
+    log(`✗ Error: ${e.message}`);
+  }
+}
+
+function loadAll() {
+  loadStats();
+  loadHealth();
+}
+
+loadAll();
+setInterval(loadAll, 30000); // auto-refresh every 30s
+</script>
+
+</body>
+</html>

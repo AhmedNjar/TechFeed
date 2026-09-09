@@ -1,0 +1,105 @@
+spring:
+  application:
+    name: tech-intelligence-hub
+
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/techhub}
+      # ✅ C-3 FIX: auto-index-creation DISABLED
+      # Indexes are created once via AppConfig.ensureIndexes() on ApplicationReadyEvent
+      auto-index-creation: false
+
+  # ✅ F-4: async support
+  task:
+    execution:
+      pool:
+        core-size: 4
+        max-size: 8
+        queue-capacity: 100
+
+# ── Ollama ─────────────────────────────────────────────────────────────────────
+ollama:
+  base-url: ${OLLAMA_URL:http://localhost:11434}
+  model: ${OLLAMA_MODEL:llama3.2}
+  timeout-seconds: 90   # increased — local Ollama can be slow
+
+# ── Ingestion sources ──────────────────────────────────────────────────────────
+ingestion:
+  rss:
+    feeds:
+      - url: "https://kotlinlang.org/feed.xml"
+        source: "Kotlin Blog"
+        tags: [ "kotlin", "kmp" ]
+      - url: "https://developer.android.com/feeds/androidx-release-notes.xml"
+        source: "AndroidX"
+        tags: [ "android", "jetpack" ]
+      - url: "https://dev.to/feed/tag/kotlin"
+        source: "Dev.to"
+        tags: [ "kotlin" ]
+      - url: "https://dev.to/feed/tag/android"
+        source: "Dev.to"
+        tags: [ "android" ]
+      - url: "https://dev.to/feed/tag/ai"
+        source: "Dev.to"
+        tags: [ "ai" ]
+      - url: "https://dev.to/feed/tag/machinelearning"
+        source: "Dev.to"
+        tags: [ "ai", "ml" ]
+
+  reddit:
+    subreddits:
+      - name: "Kotlin"
+        tags: [ "kotlin", "kmp" ]
+      - name: "androiddev"
+        tags: [ "android", "kotlin" ]
+      - name: "MachineLearning"
+        tags: [ "ai", "ml" ]
+      - name: "robotics"
+        tags: [ "robotics" ]
+    limit: 25
+    user-agent: "TechHub/1.0 (by /u/techhub_bot)"
+
+  github:
+    languages: [ "Kotlin", "Python", "Rust" ]
+    since: "daily"
+
+  # ── Blogs without RSS — scraped via the Python Scrapling microservice ───────
+  scraper:
+    base-url: ${SCRAPER_SERVICE_URL:http://localhost:8000}
+    timeout-seconds: 45
+    blogs:
+      - name: "Example Tech Blog"
+        listing-url: "https://example-tech-blog.com/articles"
+        # Optional: precise CSS selector for article links.
+        # If omitted, the scraper service falls back to a generic heuristic.
+        link-selector: "article a.post-title"
+        tags: [ "kotlin", "backend" ]
+
+  schedule:
+    rss-cron:    "0 0 */3 * * *"
+    reddit-cron: "0 30 */3 * * *"
+    github-cron: "0 0 8 * * *"
+    blog-cron:   "0 0 9 * * *"
+
+# ── REST API ───────────────────────────────────────────────────────────────────
+api:
+  # ✅ m-2 FIX: Override this with CHROME_SECRET env var — never use the default in prod
+  chrome-extension-secret: ${CHROME_SECRET:dev-secret-change-in-prod}
+  page-size: 20
+
+# ── Actuator ───────────────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      show-details: always   # shows MongoDB + Ollama health
+
+# ── Logging (dev default) ──────────────────────────────────────────────────────
+logging:
+  level:
+    com.techhub: INFO       # ✅ m-1 FIX: INFO not DEBUG
+    org.springframework.data.mongodb: WARN
+    org.springframework.web: WARN

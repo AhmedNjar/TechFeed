@@ -14,17 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.techfeed.data.model.FeedItem
-import com.techfeed.data.model.FeedSource
 import com.techfeed.data.model.FeedTag
 import com.techfeed.presentation.*
 import com.techfeed.ui.components.*
 import com.techfeed.ui.theme.*
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import techfeed.composeapp.generated.resources.Res
@@ -142,13 +135,14 @@ fun HomeScreen(
 
                 // Feed items
                 val displayItems = if (state.isSearchActive) state.searchResults else state.items
-                itemsIndexed(displayItems, key = { _, item -> item.id }) { _, item ->
+                itemsIndexed(displayItems, key = { _, item -> item.id }) { index, item ->
                     FeedCard(
                         item         = item,
                         isBookmarked = item.id in state.bookmarkIds,
                         onClick      = { viewModel.onIntent(FeedIntent.SelectItem(item)) },
                         onBookmark   = { viewModel.onIntent(FeedIntent.ToggleBookmark(item)) },
                         onShare      = { viewModel.onIntent(FeedIntent.ShareItem(item)) },
+                        index        = index,
                         modifier     = Modifier.animateItem().padding(horizontal = 16.dp),
                     )
                 }
@@ -318,7 +312,7 @@ fun HomeScreenPreview() {
                     title = "Modern Android Development in 2024",
                     summary = "Explore the latest trends in Jetpack Compose and KMP.",
                     url = "https://example.com/1",
-                    source = FeedSource.DEV_TO,
+                    source = "Dev.to",
                     tags = listOf("Android", "Kotlin"),
                     readTimeMinutes = 5
                 )

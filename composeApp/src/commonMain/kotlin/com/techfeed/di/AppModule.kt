@@ -8,6 +8,9 @@ import com.techfeed.data.remote.buildHttpClient
 import com.techfeed.data.remote.createHttpEngine
 import com.techfeed.domain.BookmarkRepository
 import com.techfeed.domain.FeedRepository
+import com.techfeed.domain.ForYouRepository
+import com.techfeed.domain.RelatedArticlesRepository
+import com.techfeed.domain.StatsRepository
 import com.techfeed.presentation.FeedViewModel
 import org.koin.dsl.module
 
@@ -24,7 +27,10 @@ fun appModule(driverFactory: DriverFactory) = module {
     // ── Repositories ──────────────────────────────────────────────────────────
     single { FeedRepository(get(), get()) }
     single { BookmarkRepository(get()) }
+    single { ForYouRepository(get(), get()) }
+    single { StatsRepository(get()) }
+    single { RelatedArticlesRepository(get()) }
 
     // ── ViewModel ─────────────────────────────────────────────────────────────
-    factory { FeedViewModel(get(), get()) }
+    factory { FeedViewModel(get(), get(), get(), get(), get()) }
 }
