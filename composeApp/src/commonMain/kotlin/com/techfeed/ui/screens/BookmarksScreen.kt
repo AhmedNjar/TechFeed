@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.techfeed.data.model.FeedItem
-import com.techfeed.data.model.FeedSource
 import com.techfeed.ui.components.FeedCard
 import com.techfeed.ui.theme.*
 import org.jetbrains.compose.resources.painterResource
@@ -81,14 +80,15 @@ fun BookmarksScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier            = Modifier.fillMaxSize(),
         ) {
-            itemsIndexed(bookmarks, key = { _, item -> item.id }) { _, item ->
+            itemsIndexed(bookmarks, key = { _, item -> item.id }) { index, item ->
                 FeedCard(
                     item         = item,
                     isBookmarked = item.id in bookmarkIds,
                     onClick      = { onItemClick(item) },
                     onBookmark   = { onRemove(item) },
                     onShare      = { },
-                    modifier     = Modifier.padding(horizontal = 16.dp),
+                    index        = index,
+                    modifier     = Modifier.animateItem().padding(horizontal = 16.dp),
                 )
             }
         }
@@ -104,7 +104,7 @@ fun BookmarksScreenPreview() {
             title = "Getting Started with KMP",
             summary = "Learn the basics of Kotlin Multiplatform development.",
             url = "https://example.com/1",
-            source = FeedSource.DEV_TO,
+            source = "Dev.to",
             tags = listOf("Kotlin", "KMP"),
             readTimeMinutes = 5
         ),
@@ -113,7 +113,7 @@ fun BookmarksScreenPreview() {
             title = "Compose Multiplatform Best Practices",
             summary = "Tips and tricks for building shared UIs.",
             url = "https://example.com/2",
-            source = FeedSource.MEDIUM,
+            source = "Medium",
             tags = listOf("Compose", "UI"),
             readTimeMinutes = 8
         )

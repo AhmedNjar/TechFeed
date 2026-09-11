@@ -4,7 +4,6 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.techfeed.data.model.ContentBlock
 import com.techfeed.data.model.FeedItem
-import com.techfeed.data.model.FeedSource
 import com.techfeed.db.TechFeedDb
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -16,9 +15,10 @@ import kotlinx.serialization.json.Json
 
 class FeedLocalDataSource(db: TechFeedDb) {
 
-    private val feedQueries     = db.feedItemQueries
-    private val bookmarkQueries = db.bookmarkQueries
-    private val json            = Json { ignoreUnknownKeys = true }
+    private val feedQueries        = db.feedItemQueries
+    private val bookmarkQueries    = db.bookmarkQueries
+    private val readHistoryQueries = db.readHistoryQueries
+    private val json               = Json { ignoreUnknownKeys = true }
 
     // ── Feed Cache ────────────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ class FeedLocalDataSource(db: TechFeedDb) {
                     content_blocks    = json.encodeToString(item.contentBlocks),
                     summary           = item.summary,
                     url               = item.url,
-                    source            = item.source.name,
+                    source            = item.source,
                     tags              = item.tags.joinToString(","),
                     image_url         = item.imageUrl,
                     read_time_minutes = item.readTimeMinutes.toLong(),
@@ -67,6 +67,12 @@ class FeedLocalDataSource(db: TechFeedDb) {
             .mapToList(Dispatchers.IO)
             .map { rows -> rows.map { it.toFeedItem(json) } }
 
+    fun getCachedByTagKeyword(keyword: String, limit: Long): Flow<List<FeedItem>> =
+        feedQueries.selectByTagKeyword(keyword, limit)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { rows -> rows.map { it.toFeedItem(json) } }
+
     // ── Bookmarks ─────────────────────────────────────────────────────────────
 
     fun getAllBookmarks(): Flow<List<FeedItem>> =
@@ -87,7 +93,7 @@ class FeedLocalDataSource(db: TechFeedDb) {
             content_blocks    = json.encodeToString(item.contentBlocks),
             summary           = item.summary,
             url               = item.url,
-            source            = item.source.name,
+            source            = item.source,
             tags              = item.tags.joinToString(","),
             image_url         = item.imageUrl,
             read_time_minutes = item.readTimeMinutes.toLong(),
@@ -103,6 +109,44 @@ class FeedLocalDataSource(db: TechFeedDb) {
         bookmarkQueries.count()
             .asFlow()
             .map { it.executeAsOne() }
+
+    // ── Read History ─────────────────────────────────────────────────────────
+
+    suspend fun recordRead(item: FeedItem) = withContext(Dispatchers.IO) {
+        readHistoryQueries.recordRead(
+            id                = item.id,
+            title             = item.title,
+            content_blocks    = json.encodeToString(item.contentBlocks),
+            summary           = item.summary,
+            url               = item.url,
+            source            = item.source,
+            tags              = item.tags.joinToString(","),
+            image_url         = item.imageUrl,
+            read_time_minutes = item.readTimeMinutes.toLong(),
+            read_at           = currentTimeMillis(),
+        )
+    }
+
+    fun recentlyRead(limit: Long): Flow<List<FeedItem>> =
+        readHistoryQueries.selectRecent(limit)
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+            .map { rows -> rows.map { it.toFeedItem(json) } }
+
+    fun readCount(): Flow<Long> =
+        readHistoryQueries.countAll()
+            .asFlow()
+            .map { it.executeAsOne() }
+
+    fun allReadTimestamps(): Flow<List<Long>> =
+        readHistoryQueries.allTimestamps()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
+
+    fun allReadTags(): Flow<List<String>> =
+        readHistoryQueries.allTags()
+            .asFlow()
+            .mapToList(Dispatchers.IO)
 }
 
 // ── Mappers ───────────────────────────────────────────────────────────────────
@@ -115,7 +159,7 @@ private fun com.techfeed.db.Feed_item.toFeedItem(json: Json) = FeedItem(
     }.getOrDefault(emptyList()),
     summary          = summary,
     url              = url,
-    source           = runCatching { FeedSource.valueOf(source) }.getOrDefault(FeedSource.DEV_TO),
+    source           = source,
     tags             = tags.split(",").filter { it.isNotBlank() },
     imageUrl         = image_url,
     readTimeMinutes  = read_time_minutes.toInt(),
@@ -130,7 +174,22 @@ private fun com.techfeed.db.Bookmark.toFeedItem(json: Json) = FeedItem(
     }.getOrDefault(emptyList()),
     summary          = summary,
     url              = url,
-    source           = runCatching { FeedSource.valueOf(source) }.getOrDefault(FeedSource.DEV_TO),
+    source           = source,
+    tags             = tags.split(",").filter { it.isNotBlank() },
+    imageUrl         = image_url,
+    readTimeMinutes  = read_time_minutes.toInt(),
+    publishedAt      = "",
+)
+
+private fun com.techfeed.db.Read_history.toFeedItem(json: Json) = FeedItem(
+    id               = id,
+    title            = title,
+    contentBlocks    = runCatching {
+        json.decodeFromString<List<ContentBlock>>(content_blocks)
+    }.getOrDefault(emptyList()),
+    summary          = summary,
+    url              = url,
+    source           = source,
     tags             = tags.split(",").filter { it.isNotBlank() },
     imageUrl         = image_url,
     readTimeMinutes  = read_time_minutes.toInt(),

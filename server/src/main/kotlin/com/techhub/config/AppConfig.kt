@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit
 
 @Configuration
 @EnableAsync
-class AppConfig {
+open class AppConfig {
 
     @Bean
     fun objectMapper(): ObjectMapper = ObjectMapper()

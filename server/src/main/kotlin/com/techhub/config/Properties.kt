@@ -83,4 +83,4 @@ data class ScraperProperties(
     ApiProperties::class,
     ScraperProperties::class,
 )
-class PropertiesConfig
+open class PropertiesConfig

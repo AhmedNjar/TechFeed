@@ -1,0 +1,39 @@
+-- composeApp/src/commonMain/sqldelight/com/techfeed/db/ReadHistory.sq
+
+CREATE TABLE IF NOT EXISTS read_history (
+    id               TEXT    NOT NULL PRIMARY KEY,
+    title            TEXT    NOT NULL,
+    content_blocks   TEXT    NOT NULL DEFAULT '[]',
+    summary          TEXT    NOT NULL DEFAULT '',
+    url              TEXT    NOT NULL,
+    source           TEXT    NOT NULL,
+    tags             TEXT    NOT NULL DEFAULT '',
+    image_url        TEXT,
+    read_time_minutes INTEGER NOT NULL DEFAULT 0,
+    read_at          INTEGER NOT NULL               -- epoch millis
+);
+
+CREATE INDEX IF NOT EXISTS idx_read_history_at ON read_history(read_at DESC);
+
+-- ── Queries ───────────────────────────────────────────────────────────────────
+
+recordRead:
+INSERT OR REPLACE INTO read_history VALUES (
+    :id, :title, :content_blocks, :summary, :url,
+    :source, :tags, :image_url, :read_time_minutes, :read_at
+);
+
+selectAll:
+SELECT * FROM read_history ORDER BY read_at DESC;
+
+selectRecent:
+SELECT * FROM read_history ORDER BY read_at DESC LIMIT :limit;
+
+countAll:
+SELECT COUNT(*) FROM read_history;
+
+allTimestamps:
+SELECT read_at FROM read_history ORDER BY read_at DESC;
+
+allTags:
+SELECT tags FROM read_history;

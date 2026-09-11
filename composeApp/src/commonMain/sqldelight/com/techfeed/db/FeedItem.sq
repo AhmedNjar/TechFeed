@@ -53,3 +53,9 @@ LIMIT 50;
 
 countAll:
 SELECT COUNT(*) FROM feed_item;
+
+selectByTagKeyword:
+SELECT * FROM feed_item
+WHERE tags LIKE '%' || :keyword || '%'
+ORDER BY cached_at DESC
+LIMIT :limit;

@@ -5,9 +5,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Bookmark
-import androidx.compose.material.icons.rounded.BookmarkBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
@@ -22,6 +19,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.techfeed.ui.theme.TechFeedColors
+import org.jetbrains.compose.resources.painterResource
+import techfeed.composeapp.generated.resources.Res
+import techfeed.composeapp.generated.resources.round_bookmark_24
+import techfeed.composeapp.generated.resources.rounded_bookmark_24
 
 /**
  * A bookmark toggle used identically in FeedCard, ReadModeScreen, and the
@@ -68,7 +69,8 @@ fun AnimatedBookmarkIcon(
 
     IconButton(onClick = onClick, modifier = modifier.size(buttonSize)) {
         Icon(
-            imageVector = if (isBookmarked) Icons.Rounded.Bookmark else Icons.Rounded.BookmarkBorder,
+            painter = if (isBookmarked) painterResource(Res.drawable.round_bookmark_24)
+                      else          painterResource(Res.drawable.rounded_bookmark_24),
             contentDescription = if (isBookmarked) "Remove bookmark" else "Bookmark",
             tint     = tint,
             modifier = Modifier.size(iconSize).scale(bounce.value),

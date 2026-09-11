@@ -19,3 +19,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "TechFeed"
 include(":composeApp")
+include(":server")

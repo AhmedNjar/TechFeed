@@ -1,7 +1,6 @@
 package com.techfeed.data.remote
 
 import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.darwin.Darwin
 
-actual fun createHttpEngine(): io.ktor.client.engine.HttpClientEngine {
-    TODO("Not yet implemented")
-}
+actual fun createHttpEngine(): HttpClientEngine = Darwin.create()

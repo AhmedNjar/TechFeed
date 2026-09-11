@@ -15,6 +15,15 @@ ktor                  = "3.1.2"
 kotlinx-serialization = "1.8.0"
 kotlinx-coroutines    = "1.10.1"
 
+# ── Spring Boot ───────────────────────────────────────────────────────────────
+springBoot            = "3.4.1"
+springDependencyMgmt  = "1.1.7"
+
+# ── Backend Utilities ─────────────────────────────────────────────────────────
+jsoup                 = "1.23.2"
+rome                  = "2.1.0"
+flexmark              = "0.64.8"
+
 # ── Persistence (Zero KSP) ────────────────────────────────────────────────────
 # SQLDelight: pure Gradle plugin — NO KSP, NO KAPT, NO annotation processing
 sqldelight            = "2.0.2"
@@ -62,9 +71,24 @@ navigation-compose        = { module = "org.jetbrains.androidx.navigation:naviga
 # ── AndroidX ──────────────────────────────────────────────────────────────────
 androidx-activity-compose = { module = "androidx.activity:activity-compose",               version.ref = "androidx-activityCompose" }
 
+# ── Spring Boot ───────────────────────────────────────────────────────────────
+spring-boot-starter-web    = { module = "org.springframework.boot:spring-boot-starter-web",        version.ref = "springBoot" }
+spring-boot-starter-mongodb = { module = "org.springframework.boot:spring-boot-starter-data-mongodb", version.ref = "springBoot" }
+spring-boot-starter-webflux = { module = "org.springframework.boot:spring-boot-starter-webflux",      version.ref = "springBoot" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator",    version.ref = "springBoot" }
+spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation", version.ref = "springBoot" }
+jackson-module-kotlin      = { module = "com.fasterxml.jackson.module:jackson-module-kotlin" }
+
+# ── Backend Utilities ─────────────────────────────────────────────────────────
+jsoup                      = { module = "org.jsoup:jsoup",                                 version.ref = "jsoup" }
+rometools-rome             = { module = "com.rometools:rome",                              version.ref = "rome" }
+flexmark-html2md           = { module = "com.vladsch.flexmark:flexmark-html2md-converter",  version.ref = "flexmark" }
+
 [plugins]
 # ── Kotlin ────────────────────────────────────────────────────────────────────
 kotlin-multiplatform      = { id = "org.jetbrains.kotlin.multiplatform",                   version.ref = "kotlin" }
+kotlinJvm                 = { id = "org.jetbrains.kotlin.jvm",                             version.ref = "kotlin" }
+kotlin-spring             = { id = "org.jetbrains.kotlin.plugin.spring",                   version.ref = "kotlin" }
 kotlin-serialization      = { id = "org.jetbrains.kotlin.plugin.serialization",            version.ref = "kotlin" }
 compose-multiplatform     = { id = "org.jetbrains.compose",                                version.ref = "compose-multiplatform" }
 compose-compiler          = { id = "org.jetbrains.kotlin.plugin.compose",                  version.ref = "kotlin" }
@@ -72,6 +96,10 @@ compose-compiler          = { id = "org.jetbrains.kotlin.plugin.compose",       
 # ── Android ───────────────────────────────────────────────────────────────────
 android-application       = { id = "com.android.application",                              version.ref = "agp" }
 android-library           = { id = "com.android.library",                                  version.ref = "agp" }
+
+# ── Spring Boot ───────────────────────────────────────────────────────────────
+springBoot                = { id = "org.springframework.boot",                             version.ref = "springBoot" }
+springDependencyMgmt      = { id = "io.spring.dependency-management",                      version.ref = "springDependencyMgmt" }
 
 # ── SQLDelight (Gradle plugin only — zero annotation processing) ───────────────
 sqldelight                = { id = "app.cash.sqldelight",                                  version.ref = "sqldelight" }

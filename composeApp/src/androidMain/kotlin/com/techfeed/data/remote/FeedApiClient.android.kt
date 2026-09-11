@@ -1,7 +1,6 @@
 package com.techfeed.data.remote
 
 import io.ktor.client.engine.HttpClientEngine
+import io.ktor.client.engine.okhttp.OkHttp
 
-actual fun createHttpEngine(): HttpClientEngine {
-    TODO("Not yet implemented")
-}
+actual fun createHttpEngine(): HttpClientEngine = OkHttp.create()

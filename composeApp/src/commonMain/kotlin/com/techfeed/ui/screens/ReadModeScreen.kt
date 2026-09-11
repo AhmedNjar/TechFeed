@@ -1,7 +1,13 @@
 package com.techfeed.ui.screens
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
@@ -9,34 +15,50 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.input.key.Key.Companion.R
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.techfeed.data.model.FeedItem
-import com.techfeed.data.model.FeedSource
-import com.techfeed.data.model.displayName
 import com.techfeed.presentation.FeedIntent
+import com.techfeed.ui.components.AnimatedBookmarkIcon
 import com.techfeed.ui.components.ContentRenderer
 import com.techfeed.ui.components.TagPill
 import com.techfeed.ui.theme.TechFeedColors
 import com.techfeed.ui.theme.TechFeedTheme
 import com.techfeed.ui.theme.TechFeedType
+import com.techfeed.ui.util.CompactWindowSizeInfo
+import com.techfeed.ui.util.WindowSizeInfo
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import techfeed.composeapp.generated.resources.Res
 import techfeed.composeapp.generated.resources.outline_open_in_browser_24
-import techfeed.composeapp.generated.resources.round_bookmark_24
-import techfeed.composeapp.generated.resources.rounded_bookmark_24
+
+/**
+ * The reading-width cap applied on Medium/Expanded windows — an unconstrained
+ * line length on a tablet or desktop-wide pane is genuinely harder to read,
+ * so the text column centers itself within this max width instead of
+ * stretching edge to edge. The hero image is unaffected (still spans the
+ * full pane) since a wide image reads fine either way.
+ */
+private val ReadingMaxWidth = 720.dp
 
 @Composable
 fun ReadModeScreen(
     item: FeedItem,
     isBookmarked: Boolean,
+    relatedArticles: List<FeedItem>,
+    isRelatedLoading: Boolean,
+    bookmarkIds: Set<String>,
     onIntent: (FeedIntent) -> Unit,
     modifier: Modifier = Modifier,
+    windowSize: WindowSizeInfo = CompactWindowSizeInfo,
 ) {
     val uriHandler  = LocalUriHandler.current
     val scrollState = rememberScrollState()
@@ -56,7 +78,7 @@ fun ReadModeScreen(
                 .fillMaxSize()
                 .verticalScroll(scrollState),
         ) {
-            // Hero image
+            // Hero image — spans the full pane width regardless of window size
             item.imageUrl?.let { url ->
                 Box(Modifier.fillMaxWidth().height(260.dp)) {
                     AsyncImage(
@@ -76,70 +98,91 @@ fun ReadModeScreen(
                 }
             } ?: Spacer(Modifier.height(80.dp))
 
+            // ── Reading column — centered and width-capped on wide windows ───
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // Source + read time
-                Row(
-                    modifier              = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment     = Alignment.CenterVertically,
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(if (windowSize.isWide) Modifier.widthIn(max = ReadingMaxWidth) else Modifier)
+                        .padding(horizontal = 24.dp),
                 ) {
-                    Text(item.source.displayName.uppercase(), style = TechFeedType.Mono)
-                    if (item.readTimeMinutes > 0)
-                        Text("${item.readTimeMinutes} min read", style = TechFeedType.Caption)
-                }
-
-                Spacer(Modifier.height(12.dp))
-                Text(item.title, style = TechFeedType.DisplayLarge)
-                Spacer(Modifier.height(8.dp))
-                if (item.publishedAt.isNotBlank())
-                    Text(item.publishedAt, style = TechFeedType.Caption)
-                Spacer(Modifier.height(20.dp))
-                HorizontalDivider(color = TechFeedColors.Surface600)
-                Spacer(Modifier.height(20.dp))
-
-                // ── ⭐ ContentRenderer — zero Markdown, zero WebView ─────────
-                if (item.contentBlocks.isNotEmpty()) {
-                    ContentRenderer(
-                        blocks   = item.contentBlocks,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                } else if (item.summary.isNotBlank()) {
-                    // Fallback: plain summary text
-                    Text(item.summary, style = TechFeedType.Body)
-                }
-
-                Spacer(Modifier.height(28.dp))
-
-                // Tags
-                if (item.tags.isNotEmpty()) {
+                    // Source + read time
+                    // FIX: was `item.source.displayName.uppercase()` — `FeedSource`
+                    // and its `displayName` extension were removed from the model
+                    // (source is a plain free-text String now), so this didn't
+                    // compile. `item.source` is already the display string.
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier              = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment     = Alignment.CenterVertically,
                     ) {
-                        item.tags.forEach { tag -> TagPill(label = tag) }
+                        Text(item.source.uppercase(), style = TechFeedType.Mono)
+                        if (item.readTimeMinutes > 0)
+                            Text("${item.readTimeMinutes} min read", style = TechFeedType.Caption)
                     }
+
+                    Spacer(Modifier.height(12.dp))
+                    Text(item.title, style = TechFeedType.DisplayLarge)
+                    Spacer(Modifier.height(8.dp))
+                    if (item.publishedAt.isNotBlank())
+                        Text(item.publishedAt, style = TechFeedType.Caption)
+                    Spacer(Modifier.height(20.dp))
+                    HorizontalDivider(color = TechFeedColors.Surface600)
+                    Spacer(Modifier.height(20.dp))
+
+                    // ── ⭐ ContentRenderer — zero Markdown, zero WebView, staggered ──
+                    if (item.contentBlocks.isNotEmpty()) {
+                        ContentRenderer(
+                            blocks   = item.contentBlocks,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else if (item.summary.isNotBlank()) {
+                        Text(item.summary, style = TechFeedType.Body)
+                    }
+
                     Spacer(Modifier.height(28.dp))
-                }
 
-                // Open full article
-                Button(
-                    onClick  = { uriHandler.openUri(item.url) },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape    = RoundedCornerShape(12.dp),
-                    colors   = ButtonDefaults.buttonColors(
-                        containerColor = TechFeedColors.Accent,
-                        contentColor   = TechFeedColors.Surface900,
-                    ),
-                ) {
-                    Icon(painter = painterResource(Res.drawable.outline_open_in_browser_24), contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Read Full Article", style = TechFeedType.Body.copy(color = TechFeedColors.Surface900))
-                }
+                    // Tags
+                    if (item.tags.isNotEmpty()) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier              = Modifier.fillMaxWidth(),
+                        ) {
+                            item.tags.forEach { tag -> TagPill(label = tag) }
+                        }
+                        Spacer(Modifier.height(28.dp))
+                    }
 
-                Spacer(Modifier.height(40.dp))
+                    // Open full article
+                    Button(
+                        onClick  = { uriHandler.openUri(item.url) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(12.dp),
+                        colors   = ButtonDefaults.buttonColors(
+                            containerColor = TechFeedColors.Accent,
+                            contentColor   = TechFeedColors.Surface900,
+                        ),
+                    ) {
+                        Icon(painter = painterResource(Res.drawable.outline_open_in_browser_24), contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Read Full Article", style = TechFeedType.Body.copy(color = TechFeedColors.Surface900))
+                    }
+
+                    Spacer(Modifier.height(36.dp))
+                }
             }
+
+            // ── Related Articles ─────────────────────────────────────────────
+            RelatedArticlesSection(
+                articles     = relatedArticles,
+                isLoading    = isRelatedLoading,
+                onItemClick  = { onIntent(FeedIntent.SelectItem(it)) },
+            )
+
+            Spacer(Modifier.height(40.dp))
         }
 
         // ── Top action bar ─────────────────────────────────────────────────
@@ -158,17 +201,60 @@ fun ReadModeScreen(
                     tint = TechFeedColors.TextPrimary)
             }
 
-            Row(modifier = Modifier.align(Alignment.CenterEnd)) {
+            Row(modifier = Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { onIntent(FeedIntent.ShareItem(item)) }) {
                     Icon(Icons.Rounded.Share, contentDescription = "Share",
                         tint = TechFeedColors.TextPrimary)
                 }
-                IconButton(onClick = { onIntent(FeedIntent.ToggleBookmark(item)) }) {
-                    Icon(
-                        painter = if (isBookmarked) painterResource(Res.drawable.round_bookmark_24)
-                                      else          painterResource(Res.drawable.rounded_bookmark_24),
-                        contentDescription = "Bookmark",
-                        tint = if (isBookmarked) TechFeedColors.Accent else TechFeedColors.TextPrimary,
+                AnimatedBookmarkIcon(
+                    isBookmarked = isBookmarked,
+                    onClick      = { onIntent(FeedIntent.ToggleBookmark(item)) },
+                    activeTint   = TechFeedColors.Accent,
+                    inactiveTint = TechFeedColors.TextPrimary,
+                )
+            }
+        }
+    }
+}
+
+// ── Related Articles Section ───────────────────────────────────────────────────
+
+@Composable
+private fun RelatedArticlesSection(
+    articles: List<FeedItem>,
+    isLoading: Boolean,
+    onItemClick: (FeedItem) -> Unit,
+) {
+    if (!isLoading && articles.isEmpty()) return
+
+    Column(modifier = Modifier.padding(top = 8.dp)) {
+        HorizontalDivider(color = TechFeedColors.Surface600, modifier = Modifier.padding(horizontal = 24.dp))
+        Spacer(Modifier.height(20.dp))
+
+        Text(
+            text     = "Related Articles",
+            style    = TechFeedType.Title,
+            modifier = Modifier.padding(horizontal = 24.dp),
+        )
+        Spacer(Modifier.height(12.dp))
+
+        if (isLoading) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding        = PaddingValues(horizontal = 24.dp),
+            ) {
+                items(3) { RelatedCardSkeleton() }
+            }
+        } else {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding        = PaddingValues(horizontal = 24.dp),
+            ) {
+                itemsIndexed(articles, key = { _, item -> item.id }) { index, related ->
+                    RelatedCard(
+                        item    = related,
+                        index   = index,
+                        onClick = { onItemClick(related) },
                     )
                 }
             }
@@ -176,15 +262,78 @@ fun ReadModeScreen(
     }
 }
 
+@Composable
+private fun RelatedCard(item: FeedItem, index: Int, onClick: () -> Unit) {
+    // Small staggered fade+slide-in from the right as the row appears —
+    // matches the ContentRenderer stagger for a consistent "reveal" feel.
+    val appear = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        delay(minOf(index * 60L, 240L))
+        appear.animateTo(1f, tween(300, easing = FastOutSlowInEasing))
+    }
+
+    Column(
+        modifier = Modifier
+            .width(200.dp)
+            .graphicsLayer {
+                alpha        = appear.value
+                translationX = (1f - appear.value) * 24.dp.toPx()
+            }
+            .clip(RoundedCornerShape(12.dp))
+            .background(TechFeedColors.Surface800)
+            .clickable(onClick = onClick)
+            .padding(12.dp),
+    ) {
+        item.imageUrl?.let { url ->
+            AsyncImage(
+                model              = url,
+                contentDescription = null,
+                contentScale       = ContentScale.Crop,
+                modifier           = Modifier
+                    .fillMaxWidth()
+                    .height(90.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(TechFeedColors.Surface700),
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+        Text(
+            text     = item.title,
+            style    = TechFeedType.Title.copy(fontSize = 13.sp, lineHeight = 17.sp),
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(item.source, style = TechFeedType.Caption)
+    }
+}
+
+@Composable
+private fun RelatedCardSkeleton() {
+    Box(
+        modifier = Modifier
+            .width(200.dp)
+            .height(150.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(TechFeedColors.Surface800)
+    )
+}
+
+// ── Preview ────────────────────────────────────────────────────────────────────
+
 @Preview
 @Composable
 fun ReadModeScreenPreview() {
+    // FIX: was `source = FeedSource.DEV_TO` — that enum was removed from the
+    // model (source is a plain String now). Also removed an unrelated stray
+    // import (`androidx.compose.ui.input.key.Key.Companion.R`) that had
+    // nothing to do with this file.
     val sampleItem = FeedItem(
         id = "1",
         title = "The Future of Kotlin Multiplatform",
         summary = "Explore how KMP is revolutionizing cross-platform development with shared logic and native UIs.",
         url = "https://kotlinlang.org/lp/multiplatform/",
-        source = FeedSource.DEV_TO,
+        source = "Dev.to",
         tags = listOf("Kotlin", "KMP", "Mobile"),
         readTimeMinutes = 12,
         imageUrl = "https://example.com/image.jpg"
@@ -192,9 +341,12 @@ fun ReadModeScreenPreview() {
 
     TechFeedTheme {
         ReadModeScreen(
-            item = sampleItem,
-            isBookmarked = true,
-            onIntent = {}
+            item             = sampleItem,
+            isBookmarked     = true,
+            relatedArticles  = emptyList(),
+            isRelatedLoading = false,
+            bookmarkIds      = emptySet(),
+            onIntent         = {}
         )
     }
 }

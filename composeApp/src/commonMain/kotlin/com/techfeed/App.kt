@@ -1,49 +1,24 @@
 package com.techfeed
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.Composable
+import com.techfeed.presentation.FeedViewModel
+import com.techfeed.ui.screens.HomeScreen
+import com.techfeed.ui.theme.TechFeedTheme
+import org.koin.compose.koinInject
 
-import techfeed.composeapp.generated.resources.Res
-import techfeed.composeapp.generated.resources.compose_multiplatform
-
+// FIX: this was still the KMP wizard's placeholder screen (a "Click me!"
+// button + Greeting toggle) — none of the app's real UI was reachable from
+// it. This is now the real shared entry point: wraps HomeScreen in the app
+// theme and injects the ViewModel via Koin. Android has its own equivalent
+// wiring in MainActivity.kt (TechFeedRoot) and doesn't call this; iOS's
+// MainViewController.kt calls this directly.
 @Composable
-@Preview
-fun App() {
-    MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
-                }
-            }
-        }
+fun App(onShareRequest: (url: String, title: String) -> Unit) {
+    TechFeedTheme {
+        val viewModel: FeedViewModel = koinInject()
+        HomeScreen(
+            viewModel      = viewModel,
+            onShareRequest = onShareRequest,
+        )
     }
 }
