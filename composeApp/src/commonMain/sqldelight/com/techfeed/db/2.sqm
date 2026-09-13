@@ -1,0 +1,14 @@
+ALTER TABLE feed_item ADD COLUMN media_list TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE feed_item ADD COLUMN article_url TEXT;
+ALTER TABLE feed_item ADD COLUMN comments_url TEXT;
+ALTER TABLE feed_item ADD COLUMN author TEXT;
+
+ALTER TABLE bookmark ADD COLUMN media_list TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE bookmark ADD COLUMN article_url TEXT;
+ALTER TABLE bookmark ADD COLUMN comments_url TEXT;
+ALTER TABLE bookmark ADD COLUMN author TEXT;
+
+ALTER TABLE read_history ADD COLUMN media_list TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE read_history ADD COLUMN article_url TEXT;
+ALTER TABLE read_history ADD COLUMN comments_url TEXT;
+ALTER TABLE read_history ADD COLUMN author TEXT;

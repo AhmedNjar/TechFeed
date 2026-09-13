@@ -5,10 +5,15 @@ CREATE TABLE IF NOT EXISTS read_history (
     title            TEXT    NOT NULL,
     content_blocks   TEXT    NOT NULL DEFAULT '[]',
     summary          TEXT    NOT NULL DEFAULT '',
+    clean_body_text  TEXT    NOT NULL DEFAULT '',
     url              TEXT    NOT NULL,
     source           TEXT    NOT NULL,
     tags             TEXT    NOT NULL DEFAULT '',
     image_url        TEXT,
+    media_list       TEXT    NOT NULL DEFAULT '[]',
+    article_url      TEXT,
+    comments_url     TEXT,
+    author           TEXT,
     read_time_minutes INTEGER NOT NULL DEFAULT 0,
     read_at          INTEGER NOT NULL               -- epoch millis
 );
@@ -19,8 +24,8 @@ CREATE INDEX IF NOT EXISTS idx_read_history_at ON read_history(read_at DESC);
 
 recordRead:
 INSERT OR REPLACE INTO read_history VALUES (
-    :id, :title, :content_blocks, :summary, :url,
-    :source, :tags, :image_url, :read_time_minutes, :read_at
+    :id, :title, :content_blocks, :summary, :clean_body_text, :url,
+    :source, :tags, :image_url, :media_list, :article_url, :comments_url, :author, :read_time_minutes, :read_at
 );
 
 selectAll:

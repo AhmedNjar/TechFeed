@@ -23,6 +23,24 @@ enum class ContentBlockType {
     @SerialName("divider")   DIVIDER,
 }
 
+/** Media is normalized by the server so Compose never has to parse feed HTML. */
+@Serializable
+sealed interface MediaItem {
+    @Serializable
+    @SerialName("image")
+    data class Image(
+        val url: String,
+        val caption: String? = null,
+    ) : MediaItem
+
+    @Serializable
+    @SerialName("video")
+    data class Video(
+        val streamUrl: String,
+        val thumbnailUrl: String? = null,
+    ) : MediaItem
+}
+
 // ── Feed Item ─────────────────────────────────────────────────────────────────
 
 @Serializable
@@ -36,6 +54,9 @@ data class FeedItem(
     /** Short plain-text preview — shown on feed cards */
     val summary: String = "",
 
+    /** Sanitized source text, used when editorial content blocks are unavailable. */
+    val cleanBodyText: String = "",
+
     val url: String,
 
     /**
@@ -46,6 +67,13 @@ data class FeedItem(
     val tags: List<String> = emptyList(),
 
     val imageUrl: String? = null,
+
+    /** All source media, independent of optional AI-generated content blocks. */
+    val mediaList: List<MediaItem> = emptyList(),
+
+    val articleUrl: String? = null,
+    val commentsUrl: String? = null,
+    val author: String? = null,
 
     val readTimeMinutes: Int = 0,
 

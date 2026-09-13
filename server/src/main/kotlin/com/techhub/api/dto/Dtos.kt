@@ -1,8 +1,10 @@
 package com.techhub.api.dto
 
 import com.techhub.domain.document.ContentBlock
+import com.techhub.domain.document.MediaItem
 import com.techhub.domain.document.Post
 import com.techhub.domain.document.PostSource
+import com.techhub.ingestion.content.FeedContentParser
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import org.hibernate.validator.constraints.URL
@@ -28,10 +30,17 @@ data class PostDto(
     /** Plain-text card preview (≤ 200 chars) */
     val summary: String,
 
+    /** Deterministically sanitized source text; not dependent on AI processing. */
+    val cleanBodyText: String = "",
+
     val url: String,
     val source: String,
     val tags: List<String>,
     val imageUrl: String?,
+    val mediaList: List<MediaItem> = emptyList(),
+    val articleUrl: String? = null,
+    val commentsUrl: String? = null,
+    val author: String? = null,
     val readTimeMinutes: Int,
 
     /** ✅ F-3 FIX: publishedAt from the source, not ingestion time */
@@ -76,11 +85,26 @@ data class StatsDto(
 
 // ── Mapper ────────────────────────────────────────────────────────────────────
 
-fun Post.toDto() = PostDto(
+fun Post.toDto(): PostDto {
+    // Older posts were saved before parser blocks existed. Normalize those at
+    // response time so they are readable immediately; new ingestions persist
+    // the same blocks and therefore skip this fallback.
+    val legacyContent = if (contentBlocks.isEmpty()) {
+        LEGACY_CONTENT_PARSER.parse(content, url, author)
+    } else null
+    val normalizedSummary = legacyContent?.contentBlocks
+        ?.firstOrNull { it.type == "text" || it.type == "quote" }
+        ?.value
+        ?.take(200)
+        ?.takeIf(String::isNotBlank)
+        ?: summary
+
+    return PostDto(
     id            = id ?: "",
     title         = title,
-    contentBlocks = contentBlocks,
-    summary       = summary,
+    contentBlocks = contentBlocks.ifEmpty { legacyContent?.contentBlocks.orEmpty() },
+    summary       = normalizedSummary,
+    cleanBodyText = legacyContent?.cleanBodyText ?: content,
     url           = url,
     // ✅ FIX: use the actual per-post source name (e.g. "Dev.to", "Kotlin Blog")
     // instead of the coarse PostSource enum, which collapses every RSS blog
@@ -89,7 +113,14 @@ fun Post.toDto() = PostDto(
     source        = sourceName.ifBlank { source.name },
     tags          = tags,
     imageUrl      = imageUrl,
+    mediaList     = mediaList,
+    articleUrl    = articleUrl,
+    commentsUrl   = commentsUrl,
+    author        = author,
     readTimeMinutes = readTimeMinutes,
     // ✅ F-3: use publishedAt if available, else fall back to createdAt
     publishedAt   = (publishedAt ?: createdAt).toString(),
-)
+    )
+}
+
+private val LEGACY_CONTENT_PARSER = FeedContentParser()

@@ -7,7 +7,7 @@ import com.techhub.domain.document.Post
 import com.techhub.domain.document.PostClassification
 import com.techhub.domain.document.PostSource
 import com.techhub.ingestion.dedup.DuplicateDetectionService
-import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter
+import com.techhub.ingestion.content.FeedContentParser
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
@@ -32,8 +32,8 @@ class RssIngestionService(
     private val postRepository: PostRepository,
     private val duplicateDetection: DuplicateDetectionService,
 ) {
-    private val log       = LoggerFactory.getLogger(javaClass)
-    private val mdConverter = FlexmarkHtmlConverter.builder().build()
+    private val log = LoggerFactory.getLogger(javaClass)
+    private val contentParser = FeedContentParser()
 
     // The "Stealth" User-Agent
     private val stealthUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -93,20 +93,34 @@ class RssIngestionService(
                 ?: entry.description?.value
                 ?: ""
 
-            val markdownContent = if (htmlContent.isNotBlank())
-                mdConverter.convert(htmlContent)
-            else
-                entry.title ?: ""
+            val parsed = contentParser.parse(htmlContent, url, entry.author)
+            val enclosureMedia = entry.enclosures
+                .filter { it.type?.startsWith("image/") == true || it.type?.startsWith("video/") == true }
+                .flatMap { enclosure ->
+                    val tag = if (enclosure.type?.startsWith("video/") == true) "video" else "img"
+                    contentParser.parse("<$tag src=\"${enclosure.url}\">", url).mediaList
+                }
+            val normalized = parsed.copy(mediaList = (enclosureMedia + parsed.mediaList).distinctBy { media ->
+                when (media) {
+                    is com.techhub.domain.document.MediaItem.Image -> "image:${media.url}"
+                    is com.techhub.domain.document.MediaItem.Video -> "video:${media.streamUrl}"
+                }
+            })
 
             val post = Post(
                 title           = entry.title?.trim() ?: "Untitled",
-                content         = markdownContent,
+                content         = normalized.cleanBodyText.ifBlank { entry.title ?: "" },
+                contentBlocks   = normalized.contentBlocks,
                 url             = url,
                 source          = PostSource.RSS,
                 sourceName      = config.source,
                 tags            = config.tags,
-                imageUrl        = extractImageUrl(entry),
-                readTimeMinutes = estimateReadTime(markdownContent),
+                imageUrl        = normalized.primaryImageUrl(),
+                mediaList       = normalized.mediaList,
+                articleUrl      = normalized.articleUrl,
+                commentsUrl     = normalized.commentsUrl,
+                author          = normalized.author,
+                readTimeMinutes = estimateReadTime(normalized.cleanBodyText),
                 classification  = PostClassification.PENDING,
                 publishedAt     = entry.publishedDate?.toInstant(),
                 createdAt       = entry.publishedDate?.toInstant() ?: Instant.now(),
@@ -120,23 +134,15 @@ class RssIngestionService(
         return FeedResult(config.source, newPosts, duplicates, 0)
     }
 
-    private fun extractImageUrl(entry: com.rometools.rome.feed.synd.SyndEntry): String? =
-        entry.enclosures
-            .firstOrNull { it.type?.startsWith("image") == true }
-            ?.url
-            ?: extractImgTagSrc(entry.description?.value ?: "")
-
-    private fun extractImgTagSrc(html: String): String? =
-        Regex("""<img[^>]+src=["']([^"']+)["']""")
-            .find(html)
-            ?.groupValues
-            ?.getOrNull(1)
-
     private fun estimateReadTime(text: String): Int {
         val words = text.split(Regex("\\s+")).size
         return max(1, words / 200)
     }
 }
+
+private fun com.techhub.ingestion.content.ParsedFeedContent.primaryImageUrl(): String? =
+    mediaList.filterIsInstance<com.techhub.domain.document.MediaItem.Image>().firstOrNull()?.url
+        ?: mediaList.filterIsInstance<com.techhub.domain.document.MediaItem.Video>().firstOrNull()?.thumbnailUrl
 
 data class FeedResult(
     val source: String,

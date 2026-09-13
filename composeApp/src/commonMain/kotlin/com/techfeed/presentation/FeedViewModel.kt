@@ -147,15 +147,25 @@ class FeedViewModel(
         loadFeed(reset = true)
     }
 
-    private fun loadFeed(reset: Boolean, isRefresh: Boolean = false) {
+    private fun loadFeed(
+        reset: Boolean,
+        isRefresh: Boolean = false,
+        isPagination: Boolean = false,
+    ) {
         val s = _state.value
-        if ((s.isLoading || s.isPaginating) && !isRefresh) return
-        val page = if (reset) 0 else s.currentPage
+        if (s.isLoading || (s.isPaginating && !isPagination)) return
+        val page = when {
+            reset -> 0
+            isPagination -> s.currentPage + 1
+            else -> s.currentPage
+        }
+        val tag = s.selectedTag.apiValue
 
         _state.update {
             it.copy(
-                isLoading    = !isRefresh,
+                isLoading    = !isRefresh && !isPagination,
                 isRefreshing = isRefresh,
+                isPaginating = isPagination,
                 error        = null,
                 currentPage  = page,
             )
@@ -163,7 +173,7 @@ class FeedViewModel(
 
         scope.launch {
             feedRepo.getFeed(
-                tag          = _state.value.selectedTag.apiValue,
+                tag          = tag,
                 page         = page,
                 forceRefresh = isRefresh,
             ).collect { result ->
@@ -199,8 +209,7 @@ class FeedViewModel(
     private fun loadNextPage() {
         val s = _state.value
         if (!s.hasNextPage || s.isPaginating || s.isLoading) return
-        _state.update { it.copy(isPaginating = true, currentPage = it.currentPage + 1) }
-        loadFeed(reset = false)
+        loadFeed(reset = false, isPagination = true)
     }
 
     // ── Item selection (records read + loads related) ─────────────────────────

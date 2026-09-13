@@ -5,10 +5,15 @@ CREATE TABLE IF NOT EXISTS bookmark (
     title            TEXT    NOT NULL,
     content_blocks   TEXT    NOT NULL DEFAULT '[]',
     summary          TEXT    NOT NULL DEFAULT '',
+    clean_body_text  TEXT    NOT NULL DEFAULT '',
     url              TEXT    NOT NULL,
     source           TEXT    NOT NULL,
     tags             TEXT    NOT NULL DEFAULT '',
     image_url        TEXT,
+    media_list       TEXT    NOT NULL DEFAULT '[]',
+    article_url      TEXT,
+    comments_url     TEXT,
+    author           TEXT,
     read_time_minutes INTEGER NOT NULL DEFAULT 0,
     saved_at         INTEGER NOT NULL               -- epoch millis
 );
@@ -28,8 +33,8 @@ SELECT COUNT(*) > 0 FROM bookmark WHERE id = :id;
 
 insert:
 INSERT OR REPLACE INTO bookmark VALUES (
-    :id, :title, :content_blocks, :summary, :url,
-    :source, :tags, :image_url, :read_time_minutes, :saved_at
+    :id, :title, :content_blocks, :summary, :clean_body_text, :url,
+    :source, :tags, :image_url, :media_list, :article_url, :comments_url, :author, :read_time_minutes, :saved_at
 );
 
 deleteById:

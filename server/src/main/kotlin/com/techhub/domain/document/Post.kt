@@ -1,5 +1,7 @@
 package com.techhub.domain.document
 
+import com.fasterxml.jackson.annotation.JsonSubTypes
+import com.fasterxml.jackson.annotation.JsonTypeInfo
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.index.Indexed
 import org.springframework.data.mongodb.core.index.TextIndexed
@@ -52,6 +54,17 @@ data class Post(
 
     val imageUrl: String? = null,
 
+    /** Normalized media extracted from the source HTML before it is summarized. */
+    val mediaList: List<MediaItem> = emptyList(),
+
+    /** The destination article, separate from a discussion/permalink when present. */
+    val articleUrl: String? = null,
+
+    /** A source discussion URL, such as a Reddit comments permalink. */
+    val commentsUrl: String? = null,
+
+    val author: String? = null,
+
     val readTimeMinutes: Int = 0,
 
     val classification: PostClassification = PostClassification.PENDING,
@@ -77,6 +90,20 @@ data class ContentBlock(
     val url: String    = "",
     val style: String  = "",  // "h1"|"h2"|"h3"|"bold"|"normal"
 )
+
+/**
+ * Polymorphic wire model shared with the KMP client. `type` is intentionally
+ * explicit so API payloads remain stable and can be decoded without guessing.
+ */
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+@JsonSubTypes(
+    JsonSubTypes.Type(value = MediaItem.Image::class, name = "image"),
+    JsonSubTypes.Type(value = MediaItem.Video::class, name = "video"),
+)
+sealed interface MediaItem {
+    data class Image(val url: String, val caption: String? = null) : MediaItem
+    data class Video(val streamUrl: String, val thumbnailUrl: String? = null) : MediaItem
+}
 
 enum class PostSource {
     RSS,

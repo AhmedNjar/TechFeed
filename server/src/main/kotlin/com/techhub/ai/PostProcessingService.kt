@@ -60,7 +60,10 @@ class PostProcessingService(
                     }
 
                     val updated = post.copy(
-                        contentBlocks  = result.contentBlocks,
+                        // Parser blocks are the deterministic fallback. Do not
+                        // discard them when Ollama is unavailable or returns no
+                        // usable structured content.
+                        contentBlocks  = result.contentBlocks.ifEmpty { post.contentBlocks },
                         summary        = if (result.summary.isNotBlank()) result.summary else post.content.take(180),
                         classification = result.classification,
                         rawAiResponse  = null,

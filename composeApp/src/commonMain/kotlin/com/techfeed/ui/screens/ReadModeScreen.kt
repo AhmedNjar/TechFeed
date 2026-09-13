@@ -28,6 +28,7 @@ import com.techfeed.data.model.FeedItem
 import com.techfeed.presentation.FeedIntent
 import com.techfeed.ui.components.AnimatedBookmarkIcon
 import com.techfeed.ui.components.ContentRenderer
+import com.techfeed.ui.components.MediaCarousel
 import com.techfeed.ui.components.TagPill
 import com.techfeed.ui.theme.TechFeedColors
 import com.techfeed.ui.theme.TechFeedTheme
@@ -48,6 +49,7 @@ import techfeed.composeapp.generated.resources.outline_open_in_browser_24
  * full pane) since a wide image reads fine either way.
  */
 private val ReadingMaxWidth = 720.dp
+private val DetailTitleStyle = TechFeedType.DisplayLarge.copy(fontSize = 28.sp, lineHeight = 34.sp)
 
 @Composable
 fun ReadModeScreen(
@@ -78,8 +80,9 @@ fun ReadModeScreen(
                 .fillMaxSize()
                 .verticalScroll(scrollState),
         ) {
-            // Hero image — spans the full pane width regardless of window size
-            item.imageUrl?.let { url ->
+            // Keep legacy items readable. Normalized media is rendered separately
+            // below, so it is not duplicated as the old single-image hero.
+            if (item.mediaList.isEmpty()) item.imageUrl?.let { url ->
                 Box(Modifier.fillMaxWidth().height(260.dp)) {
                     AsyncImage(
                         model              = url,
@@ -96,7 +99,7 @@ fun ReadModeScreen(
                         )
                     )
                 }
-            } ?: Spacer(Modifier.height(80.dp))
+            } else if (item.mediaList.isEmpty()) Spacer(Modifier.height(104.dp))
 
             // ── Reading column — centered and width-capped on wide windows ───
             Column(
@@ -125,10 +128,18 @@ fun ReadModeScreen(
                     }
 
                     Spacer(Modifier.height(12.dp))
-                    Text(item.title, style = TechFeedType.DisplayLarge)
+                    Text(item.title, style = DetailTitleStyle)
                     Spacer(Modifier.height(8.dp))
                     if (item.publishedAt.isNotBlank())
                         Text(item.publishedAt, style = TechFeedType.Caption)
+                    item.author?.let {
+                        Spacer(Modifier.height(4.dp))
+                        Text("By $it", style = TechFeedType.Caption)
+                    }
+                    if (item.mediaList.isNotEmpty()) {
+                        Spacer(Modifier.height(20.dp))
+                        MediaCarousel(media = item.mediaList, modifier = Modifier.fillMaxWidth())
+                    }
                     Spacer(Modifier.height(20.dp))
                     HorizontalDivider(color = TechFeedColors.Surface600)
                     Spacer(Modifier.height(20.dp))
@@ -139,6 +150,8 @@ fun ReadModeScreen(
                             blocks   = item.contentBlocks,
                             modifier = Modifier.fillMaxWidth(),
                         )
+                    } else if (item.cleanBodyText.isNotBlank()) {
+                        Text(item.cleanBodyText, style = TechFeedType.Body)
                     } else if (item.summary.isNotBlank()) {
                         Text(item.summary, style = TechFeedType.Body)
                     }
@@ -158,7 +171,7 @@ fun ReadModeScreen(
 
                     // Open full article
                     Button(
-                        onClick  = { uriHandler.openUri(item.url) },
+                        onClick  = { uriHandler.openUri(item.articleUrl ?: item.url) },
                         modifier = Modifier.fillMaxWidth(),
                         shape    = RoundedCornerShape(12.dp),
                         colors   = ButtonDefaults.buttonColors(
@@ -169,6 +182,14 @@ fun ReadModeScreen(
                         Icon(painter = painterResource(Res.drawable.outline_open_in_browser_24), contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text("Read Full Article", style = TechFeedType.Body.copy(color = TechFeedColors.Surface900))
+                    }
+
+                    item.commentsUrl?.let { commentsUrl ->
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedButton(
+                            onClick = { uriHandler.openUri(commentsUrl) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text("Open Discussion") }
                     }
 
                     Spacer(Modifier.height(36.dp))

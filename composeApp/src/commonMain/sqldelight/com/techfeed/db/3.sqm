@@ -1,0 +1,3 @@
+ALTER TABLE feed_item ADD COLUMN clean_body_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE bookmark ADD COLUMN clean_body_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE read_history ADD COLUMN clean_body_text TEXT NOT NULL DEFAULT '';

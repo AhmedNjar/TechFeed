@@ -4,6 +4,7 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import com.techfeed.data.model.ContentBlock
 import com.techfeed.data.model.FeedItem
+import com.techfeed.data.model.MediaItem
 import com.techfeed.db.TechFeedDb
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -41,10 +42,15 @@ class FeedLocalDataSource(db: TechFeedDb) {
                     title             = item.title,
                     content_blocks    = json.encodeToString(item.contentBlocks),
                     summary           = item.summary,
+                    clean_body_text   = item.cleanBodyText,
                     url               = item.url,
                     source            = item.source,
                     tags              = item.tags.joinToString(","),
                     image_url         = item.imageUrl,
+                    media_list        = json.encodeToString(item.mediaList),
+                    article_url       = item.articleUrl,
+                    comments_url      = item.commentsUrl,
+                    author            = item.author,
                     read_time_minutes = item.readTimeMinutes.toLong(),
                     filter_tag        = tag,
                     page              = page.toLong(),
@@ -95,13 +101,18 @@ class FeedLocalDataSource(db: TechFeedDb) {
         bookmarkQueries.insert(
             id                = item.id,
             title             = item.title,
-            content_blocks    = json.encodeToString(item.contentBlocks),
-            summary           = item.summary,
-            url               = item.url,
+                    content_blocks    = json.encodeToString(item.contentBlocks),
+                    summary           = item.summary,
+                    clean_body_text   = item.cleanBodyText,
+                    url               = item.url,
             source            = item.source,
             tags              = item.tags.joinToString(","),
-            image_url         = item.imageUrl,
-            read_time_minutes = item.readTimeMinutes.toLong(),
+                    image_url         = item.imageUrl,
+                    media_list        = json.encodeToString(item.mediaList),
+                    article_url       = item.articleUrl,
+                    comments_url      = item.commentsUrl,
+                    author            = item.author,
+                    read_time_minutes = item.readTimeMinutes.toLong(),
             saved_at          = currentTimeMillis(),
         )
     }
@@ -121,13 +132,18 @@ class FeedLocalDataSource(db: TechFeedDb) {
         readHistoryQueries.recordRead(
             id                = item.id,
             title             = item.title,
-            content_blocks    = json.encodeToString(item.contentBlocks),
-            summary           = item.summary,
-            url               = item.url,
+                    content_blocks    = json.encodeToString(item.contentBlocks),
+                    summary           = item.summary,
+                    clean_body_text   = item.cleanBodyText,
+                    url               = item.url,
             source            = item.source,
             tags              = item.tags.joinToString(","),
-            image_url         = item.imageUrl,
-            read_time_minutes = item.readTimeMinutes.toLong(),
+                    image_url         = item.imageUrl,
+                    media_list        = json.encodeToString(item.mediaList),
+                    article_url       = item.articleUrl,
+                    comments_url      = item.commentsUrl,
+                    author            = item.author,
+                    read_time_minutes = item.readTimeMinutes.toLong(),
             read_at           = currentTimeMillis(),
         )
     }
@@ -163,10 +179,15 @@ private fun com.techfeed.db.Feed_item.toFeedItem(json: Json) = FeedItem(
         json.decodeFromString<List<ContentBlock>>(content_blocks)
     }.getOrDefault(emptyList()),
     summary          = summary,
+    cleanBodyText    = clean_body_text,
     url              = url,
     source           = source,
     tags             = tags.split(",").filter { it.isNotBlank() },
     imageUrl         = image_url,
+    mediaList        = runCatching { json.decodeFromString<List<MediaItem>>(media_list) }.getOrDefault(emptyList()),
+    articleUrl       = article_url,
+    commentsUrl      = comments_url,
+    author           = author,
     readTimeMinutes  = read_time_minutes.toInt(),
     publishedAt      = "",
 )
@@ -178,10 +199,15 @@ private fun com.techfeed.db.Bookmark.toFeedItem(json: Json) = FeedItem(
         json.decodeFromString<List<ContentBlock>>(content_blocks)
     }.getOrDefault(emptyList()),
     summary          = summary,
+    cleanBodyText    = clean_body_text,
     url              = url,
     source           = source,
     tags             = tags.split(",").filter { it.isNotBlank() },
     imageUrl         = image_url,
+    mediaList        = runCatching { json.decodeFromString<List<MediaItem>>(media_list) }.getOrDefault(emptyList()),
+    articleUrl       = article_url,
+    commentsUrl      = comments_url,
+    author           = author,
     readTimeMinutes  = read_time_minutes.toInt(),
     publishedAt      = "",
 )
@@ -193,10 +219,15 @@ private fun com.techfeed.db.Read_history.toFeedItem(json: Json) = FeedItem(
         json.decodeFromString<List<ContentBlock>>(content_blocks)
     }.getOrDefault(emptyList()),
     summary          = summary,
+    cleanBodyText    = clean_body_text,
     url              = url,
     source           = source,
     tags             = tags.split(",").filter { it.isNotBlank() },
     imageUrl         = image_url,
+    mediaList        = runCatching { json.decodeFromString<List<MediaItem>>(media_list) }.getOrDefault(emptyList()),
+    articleUrl       = article_url,
+    commentsUrl      = comments_url,
+    author           = author,
     readTimeMinutes  = read_time_minutes.toInt(),
     publishedAt      = "",
 )

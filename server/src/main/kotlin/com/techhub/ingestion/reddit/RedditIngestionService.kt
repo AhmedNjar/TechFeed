@@ -7,7 +7,7 @@ import com.techhub.domain.document.Post
 import com.techhub.domain.document.PostClassification
 import com.techhub.domain.document.PostSource
 import com.techhub.ingestion.dedup.DuplicateDetectionService
-import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter
+import com.techhub.ingestion.content.FeedContentParser
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
@@ -31,7 +31,7 @@ class RedditIngestionService(
     private val duplicateDetection: DuplicateDetectionService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val mdConverter = FlexmarkHtmlConverter.builder().build()
+    private val contentParser = FeedContentParser()
     
     // The "Stealth" User-Agent verified via manual curl
     private val stealthUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -85,17 +85,22 @@ class RedditIngestionService(
             }
 
             val htmlContent = entry.contents.firstOrNull()?.value ?: entry.description?.value ?: ""
-            val markdownContent = if (htmlContent.isNotBlank()) mdConverter.convert(htmlContent) else entry.title ?: ""
+            val normalized = contentParser.parse(htmlContent, url, entry.author)
 
             val savedPost = Post(
                 title           = entry.title?.trim() ?: "Untitled",
-                content         = markdownContent,
+                content         = normalized.cleanBodyText.ifBlank { entry.title ?: "" },
+                contentBlocks   = normalized.contentBlocks,
                 url             = url,
                 source          = PostSource.REDDIT,
                 sourceName      = "Reddit",
                 tags            = config.tags,
-                imageUrl        = extractImageUrl(entry),
-                readTimeMinutes = max(1, markdownContent.split(" ").size / 200),
+                imageUrl        = normalized.primaryImageUrl(),
+                mediaList       = normalized.mediaList,
+                articleUrl      = normalized.articleUrl,
+                commentsUrl     = normalized.commentsUrl,
+                author          = normalized.author,
+                readTimeMinutes = max(1, normalized.cleanBodyText.split(Regex("\\s+")).size / 200),
                 classification  = PostClassification.PENDING,
                 publishedAt     = entry.publishedDate?.toInstant(),
                 createdAt       = entry.publishedDate?.toInstant() ?: Instant.now(),
@@ -109,11 +114,11 @@ class RedditIngestionService(
         return SubredditResult(config.name, newPosts, duplicates, 0)
     }
 
-    private fun extractImageUrl(entry: com.rometools.rome.feed.synd.SyndEntry): String? {
-        val html = entry.description?.value ?: ""
-        return Regex("""<img[^>]+src=["']([^"']+)["']""").find(html)?.groupValues?.getOrNull(1)
-    }
 }
+
+private fun com.techhub.ingestion.content.ParsedFeedContent.primaryImageUrl(): String? =
+    mediaList.filterIsInstance<com.techhub.domain.document.MediaItem.Image>().firstOrNull()?.url
+        ?: mediaList.filterIsInstance<com.techhub.domain.document.MediaItem.Video>().firstOrNull()?.thumbnailUrl
 
 data class SubredditResult(
     val subreddit: String,

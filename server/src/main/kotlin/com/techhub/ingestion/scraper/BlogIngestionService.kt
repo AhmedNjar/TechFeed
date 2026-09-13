@@ -3,6 +3,7 @@ package com.techhub.ingestion.scraper
 import com.techhub.config.ScraperProperties
 import com.techhub.data.repository.PostRepository
 import com.techhub.ingestion.dedup.DuplicateDetectionService
+import com.techhub.ingestion.content.FeedContentParser
 import com.techhub.domain.document.Post
 import com.techhub.domain.document.PostClassification
 import com.techhub.domain.document.PostSource
@@ -30,6 +31,7 @@ class BlogIngestionService(
     private val duplicateDetection: DuplicateDetectionService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
+    private val contentParser = FeedContentParser()
 
     fun ingestAll(): BlogIngestionReport {
         log.info("Starting blog ingestion for ${properties.blogs.size} configured blogs")
@@ -83,15 +85,31 @@ class BlogIngestionService(
                 return@forEach
             }
 
+            val parsed = contentParser.parse(article.content, url, article.author)
+            val coverMedia = article.image_url?.let { imageUrl ->
+                contentParser.parse("<img src=\"$imageUrl\">", url).mediaList
+            }.orEmpty()
+            val normalized = parsed.copy(mediaList = (coverMedia + parsed.mediaList).distinctBy { media ->
+                when (media) {
+                    is com.techhub.domain.document.MediaItem.Image -> "image:${media.url}"
+                    is com.techhub.domain.document.MediaItem.Video -> "video:${media.streamUrl}"
+                }
+            })
+
             val post = Post(
                 title           = article.title?.trim() ?: "Untitled",
-                content         = article.content,
+                content         = normalized.cleanBodyText,
+                contentBlocks   = normalized.contentBlocks,
                 url             = url,
                 source          = PostSource.RSS,   // reuse RSS source type (it's a blog article either way)
                 sourceName      = blog.name,        // ✅ e.g. configured blog display name
                 tags            = blog.tags,
-                imageUrl        = article.image_url,
-                readTimeMinutes = estimateReadTime(article.content),
+                imageUrl        = normalized.primaryImageUrl(),
+                mediaList       = normalized.mediaList,
+                articleUrl      = normalized.articleUrl,
+                commentsUrl     = normalized.commentsUrl,
+                author          = normalized.author,
+                readTimeMinutes = estimateReadTime(normalized.cleanBodyText),
                 classification  = PostClassification.PENDING,
                 publishedAt     = parsePublishedAt(article.published_at),
                 createdAt       = Instant.now(),
@@ -124,6 +142,10 @@ class BlogIngestionService(
         }.getOrNull()
     }
 }
+
+private fun com.techhub.ingestion.content.ParsedFeedContent.primaryImageUrl(): String? =
+    mediaList.filterIsInstance<com.techhub.domain.document.MediaItem.Image>().firstOrNull()?.url
+        ?: mediaList.filterIsInstance<com.techhub.domain.document.MediaItem.Video>().firstOrNull()?.thumbnailUrl
 
 // ── Reports ───────────────────────────────────────────────────────────────────
 
