@@ -30,6 +30,7 @@ sealed interface FeedIntent {
     data class  ToggleBookmark(val item: FeedItem): FeedIntent
     data object ShowBookmarks                     : FeedIntent
     data object HideBookmarks                     : FeedIntent
+    data class  DeleteItem(val item: FeedItem)    : FeedIntent
     data class  ShareItem(val item: FeedItem)     : FeedIntent
 
     // ── NEW: For You ─────────────────────────────────────────────────────────
@@ -125,6 +126,7 @@ class FeedViewModel(
         is FeedIntent.ToggleBookmark     -> toggleBookmark(intent.item)
         FeedIntent.ShowBookmarks         -> _state.update { it.copy(showBookmarks = true) }
         FeedIntent.HideBookmarks         -> _state.update { it.copy(showBookmarks = false) }
+        is FeedIntent.DeleteItem         -> deleteItem(intent.item)
         is FeedIntent.ShareItem          -> scope.launch {
             _effects.emit(FeedEffect.Share(intent.item.url, intent.item.title))
         }
@@ -260,6 +262,25 @@ class FeedViewModel(
             _effects.emit(FeedEffect.ShowSnackbar(
                 if (wasBookmarked) "Removed from bookmarks" else "Saved ✓"
             ))
+        }
+    }
+
+    private fun deleteItem(item: FeedItem) {
+        // 1. Update UI immediately (optimistic update)
+        _state.update { s ->
+            s.copy(
+                items         = s.items.filter { it.id != item.id },
+                searchResults = s.searchResults.filter { it.id != item.id },
+                bookmarks     = s.bookmarks.filter { it.id != item.id },
+                forYouItems   = s.forYouItems.filter { it.id != item.id },
+                bookmarkIds   = s.bookmarkIds - item.id,
+                bookmarkCount = s.bookmarkCount - if (item.id in s.bookmarkIds) 1 else 0
+            )
+        }
+        // 2. Persist in background
+        scope.launch {
+            feedRepo.hideItem(item.id)
+            bookmarkRepo.remove(item.id)
         }
     }
 

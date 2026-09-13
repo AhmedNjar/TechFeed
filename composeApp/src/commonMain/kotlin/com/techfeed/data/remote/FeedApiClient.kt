@@ -18,12 +18,12 @@ import kotlinx.serialization.json.Json
 /**
  * ⚠️ IMPORTANT FOR PHYSICAL DEVICE TESTING:
  * 1. Find your computer's local IP (terminal: `ipconfig` on Windows, `ifconfig` on Mac).
- * 2. Replace "localhost" with that IP below (e.g., "http://192.168.1.5:8080/api/").
+ * 2. Replace "localhost" with that IP below (e.g., "http://192.168.1.8:8080/api/").
  * 3. Ensure your phone and computer are on the SAME Wi-Fi network.
  *
  * Emulator Tip: "http://10.0.2.2:8080/api/" works for the standard Android emulator.
  */
-private const val BASE_URL = "http://192.168.1.8:8080/api/"
+private const val BASE_URL = "http://localhost:8080/api/"
 
 fun buildHttpClient(engine: HttpClientEngine): HttpClient = HttpClient(engine) {
     install(ContentNegotiation) {

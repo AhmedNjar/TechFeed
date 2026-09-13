@@ -1,0 +1,13 @@
+-- shared/src/commonMain/sqldelight/com/techfeed/db/HiddenItem.sq
+
+CREATE TABLE IF NOT EXISTS hidden_item (
+    id TEXT NOT NULL PRIMARY KEY
+);
+
+-- ── Queries ───────────────────────────────────────────────────────────────────
+
+insert:
+INSERT OR IGNORE INTO hidden_item(id) VALUES (:id);
+
+selectAllIds:
+SELECT id FROM hidden_item;

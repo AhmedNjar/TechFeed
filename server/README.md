@@ -56,3 +56,6 @@ Example triggering RSS ingestion:
 curl -X POST http://localhost:8080/api/admin/ingest/rss \
   -H "X-Admin-Secret: dev-secret-change-in-prod"
 ```
+
+
+"F:\mongo\mongodb-windows-x86_64-8.3.9\mongodb-win32-x86_64-windows-8.3.9\bin\mongod.exe" --dbpath="F:\mongo\mongodb-windows-x86_64-8.3.9\mongodb-win32-x86_64-windows-8.3.9\bin\db"

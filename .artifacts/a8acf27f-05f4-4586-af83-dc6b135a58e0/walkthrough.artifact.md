@@ -1,33 +1,24 @@
-# Walkthrough: Ready for Physical Device Testing
+# Walkthrough: AI Bypass for Development
 
-I have updated the project to facilitate testing on a physical phone. This involves making the network configuration explicit and ensuring the backend can start correctly.
+I have implemented a development bypass in the backend's post-processing logic. This ensures that articles are automatically promoted to the `TECHNICAL` classification, making them visible in the mobile app even if you don't have an Ollama instance running locally.
 
 ## Changes Made
 
-### 1. Mobile App Configuration
-- **File**: [FeedApiClient.kt](file:///C:/Users/Lenovo/AndroidStudioProjects/TechFeed/composeApp/src/commonMain/kotlin/com/techfeed/data/remote/FeedApiClient.kt)
-- **Change**: Added documentation and a placeholder in `BASE_URL` to help you configure the app to connect to your computer's local IP address.
+### Backend
 
-### 2. Backend Stability
-- **File**: [TechIntelligenceHubApplication.kt](file:///C:/Users/Lenovo/AndroidStudioProjects/TechFeed/server/src/main/kotlin/com/techhub/TechIntelligenceHubApplication.kt)
-- **Change**: Marked the main class as `open`. This prevents potential Spring Boot startup issues where `@Configuration` or `@SpringBootApplication` classes are expected to be non-final by the proxying mechanism.
-
-## Steps to Test on Your Phone
-
-1.  **Get your Local IP**:
-    - On Windows: Run `ipconfig` in CMD. Look for `IPv4 Address` (e.g., `192.168.1.10`).
-    - On Mac/Linux: Run `ifconfig` or `ip addr`.
-2.  **Update the App**:
-    - Open [FeedApiClient.kt](file:///C:/Users/Lenovo/AndroidStudioProjects/TechFeed/composeApp/src/commonMain/kotlin/com/techfeed/data/remote/FeedApiClient.kt).
-    - Change `http://localhost:8080/api/` to `http://YOUR_IP:8080/api/`.
-3.  **Start Services**:
-    - Ensure **MongoDB** is running.
-    - Run the backend: `./gradlew :server:bootRun`.
-4.  **Connect Phone**:
-    - Connect your phone to the **same Wi-Fi** as your computer.
-    - Run the app from Android Studio onto your phone.
+#### [PostProcessingService.kt](file:///C:/Users/Lenovo/AndroidStudioProjects/TechFeed/server/src/main/kotlin/com/techhub/ai/PostProcessingService.kt)
+- Modified `processPendingPosts` to include a fallback mechanism.
+- If `OllamaService` returns an `ERROR` (e.g., because it can't connect to the local AI server) or a `PENDING` state, the service now forces the classification to `TECHNICAL`.
+- It also generates a rudimentary summary from the first 180 characters of the article content to ensure the feed cards have text.
 
 ## Verification Results
 
-- [x] `:server:assemble` passed.
-- [x] `:composeApp:assembleDebug` passed.
+- [x] Verified that the `:server` module builds successfully.
+- [x] Logic handles both connection failures and classification errors by falling back to the bypass.
+
+## Next Steps for Testing
+
+1. **Restart the Backend**: Run `./gradlew :server:bootRun`.
+2. **Wait a Moment**: The background service runs every 2 minutes. You should see logs like:
+   `Ollama failed or returned error for '...' — applying DEV BYPASS`
+3. **Refresh the App**: Once those logs appear, refresh the feed on your phone. Articles should now be visible.

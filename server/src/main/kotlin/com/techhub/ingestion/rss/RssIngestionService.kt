@@ -1,7 +1,6 @@
 package com.techhub.ingestion.rss
 
 import com.rometools.rome.io.SyndFeedInput
-import com.rometools.rome.io.XmlReader
 import com.techhub.config.RssProperties
 import com.techhub.data.repository.PostRepository
 import com.techhub.domain.document.Post
@@ -10,27 +9,34 @@ import com.techhub.domain.document.PostSource
 import com.techhub.ingestion.dedup.DuplicateDetectionService
 import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
-import java.net.URL
+import org.springframework.web.reactive.function.client.WebClient
+import org.springframework.web.reactive.function.client.bodyToMono
+import java.io.StringReader
+import java.time.Duration
 import java.time.Instant
 import kotlin.math.max
 
 /**
- * FIX: this file did not exist anywhere in the project, but
- * IngestionScheduler.kt and AdminController.kt both still imported and
- * constructor-injected RssIngestionService — unresolved reference in both.
- *
  * Saves posts as PENDING; PostProcessingService promotes them via Ollama
  * asynchronously (kept fast — no blocking AI call during ingestion itself).
+ *
+ * NOTE: Uses a "stealthy" User-Agent for feeds that might block automated requests.
  */
 @Service
 class RssIngestionService(
+    @Qualifier("webClient")
+    private val webClient: WebClient,
     private val properties: RssProperties,
     private val postRepository: PostRepository,
     private val duplicateDetection: DuplicateDetectionService,
 ) {
     private val log       = LoggerFactory.getLogger(javaClass)
     private val mdConverter = FlexmarkHtmlConverter.builder().build()
+
+    // The "Stealth" User-Agent
+    private val stealthUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
     fun ingestAll(): IngestionReport {
         log.info("Starting RSS ingestion for ${properties.feeds.size} feeds")
@@ -54,12 +60,18 @@ class RssIngestionService(
     private fun ingestFeed(config: RssProperties.FeedConfig): FeedResult {
         log.debug("Fetching RSS feed: ${config.url}")
 
-        // SyndFeedInput is NOT thread-safe — a fresh instance per fetch.
-        val feed = XmlReader(URL(config.url)).use { reader ->
-            SyndFeedInput().apply {
-                isAllowDoctypes = false // prevent XXE injection
-            }.build(reader)
-        }
+        // Fetch XML content as String using WebClient with browser User-Agent
+        val xmlContent = webClient.get()
+            .uri(config.url)
+            .header("User-Agent", stealthUserAgent)
+            .retrieve()
+            .bodyToMono<String>()
+            .timeout(Duration.ofSeconds(30))
+            .block() ?: throw IllegalStateException("Empty response from ${config.url}")
+
+        val feed = SyndFeedInput().apply {
+            isAllowDoctypes = false
+        }.build(StringReader(xmlContent))
 
         var newPosts = 0
         var duplicates = 0

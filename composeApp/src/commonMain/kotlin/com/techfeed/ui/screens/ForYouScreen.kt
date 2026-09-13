@@ -30,6 +30,7 @@ fun ForYouScreen(
     onItemClick: (FeedItem) -> Unit,
     onBookmark: (FeedItem) -> Unit,
     onShare: (FeedItem) -> Unit,
+    onDelete: (FeedItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -98,6 +99,7 @@ fun ForYouScreen(
                         onClick      = { onItemClick(item) },
                         onBookmark   = { onBookmark(item) },
                         onShare      = { onShare(item) },
+                        onDelete     = { onDelete(item) },
                         index        = index,
                         modifier     = Modifier.animateItem().padding(horizontal = 16.dp),
                     )

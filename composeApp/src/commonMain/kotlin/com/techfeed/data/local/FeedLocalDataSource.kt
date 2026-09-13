@@ -18,6 +18,7 @@ class FeedLocalDataSource(db: TechFeedDb) {
     private val feedQueries        = db.feedItemQueries
     private val bookmarkQueries    = db.bookmarkQueries
     private val readHistoryQueries = db.readHistoryQueries
+    private val hiddenQueries      = db.hiddenItemQueries
     private val json               = Json { ignoreUnknownKeys = true }
 
     // ── Feed Cache ────────────────────────────────────────────────────────────
@@ -72,6 +73,10 @@ class FeedLocalDataSource(db: TechFeedDb) {
             .asFlow()
             .mapToList(Dispatchers.IO)
             .map { rows -> rows.map { it.toFeedItem(json) } }
+
+    suspend fun hideItem(id: String) = withContext(Dispatchers.IO) {
+        hiddenQueries.insert(id)
+    }
 
     // ── Bookmarks ─────────────────────────────────────────────────────────────
 

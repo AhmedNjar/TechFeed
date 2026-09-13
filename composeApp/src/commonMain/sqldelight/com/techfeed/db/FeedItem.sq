@@ -28,6 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_feed_cached ON feed_item(cached_at);
 selectByTagAndPage:
 SELECT * FROM feed_item
 WHERE filter_tag = :tag AND page = :page
+AND id NOT IN (SELECT id FROM hidden_item)
 ORDER BY cached_at DESC;
 
 insertOrReplace:
@@ -45,9 +46,10 @@ DELETE FROM feed_item WHERE cached_at < :threshold;
 
 search:
 SELECT * FROM feed_item
-WHERE title LIKE '%' || :query || '%'
+WHERE (title LIKE '%' || :query || '%'
    OR summary LIKE '%' || :query || '%'
-   OR tags LIKE '%' || :query || '%'
+   OR tags LIKE '%' || :query || '%')
+   AND id NOT IN (SELECT id FROM hidden_item)
 ORDER BY cached_at DESC
 LIMIT 50;
 
@@ -57,5 +59,6 @@ SELECT COUNT(*) FROM feed_item;
 selectByTagKeyword:
 SELECT * FROM feed_item
 WHERE tags LIKE '%' || :keyword || '%'
+AND id NOT IN (SELECT id FROM hidden_item)
 ORDER BY cached_at DESC
 LIMIT :limit;

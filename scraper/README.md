@@ -56,3 +56,6 @@ docker run -p 8000:8000 techhub-scraper
 - Identifies itself with a custom `User-Agent` (see `app/scraper.py`).
 - Respect each site's `robots.txt` and rate limits when configuring which blogs to
   ingest and how often (the Spring Boot scheduler controls ingestion frequency).
+
+
+.\venv\Scripts\python.exe -m uvicorn app.main:app --port 8000

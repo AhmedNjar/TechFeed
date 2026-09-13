@@ -26,6 +26,7 @@ fun BookmarksScreen(
     onClose: () -> Unit,
     onItemClick: (FeedItem) -> Unit,
     onRemove: (FeedItem) -> Unit,
+    onDelete: (FeedItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -87,6 +88,7 @@ fun BookmarksScreen(
                     onClick      = { onItemClick(item) },
                     onBookmark   = { onRemove(item) },
                     onShare      = { },
+                    onDelete     = { onDelete(item) },
                     index        = index,
                     modifier     = Modifier.animateItem().padding(horizontal = 16.dp),
                 )
@@ -125,7 +127,8 @@ fun BookmarksScreenPreview() {
             bookmarkIds = setOf("1", "2"),
             onClose = {},
             onItemClick = {},
-            onRemove = {}
+            onRemove = {},
+            onDelete = {}
         )
     }
 }
@@ -139,7 +142,8 @@ fun BookmarksScreenEmptyPreview() {
             bookmarkIds = emptySet(),
             onClose = {},
             onItemClick = {},
-            onRemove = {}
+            onRemove = {},
+            onDelete = {}
         )
     }
 }

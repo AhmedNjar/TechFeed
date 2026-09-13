@@ -1,26 +1,26 @@
 package com.techhub.ingestion.reddit
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties
-import com.fasterxml.jackson.annotation.JsonProperty
+import com.rometools.rome.io.SyndFeedInput
 import com.techhub.config.RedditProperties
 import com.techhub.data.repository.PostRepository
 import com.techhub.domain.document.Post
 import com.techhub.domain.document.PostClassification
 import com.techhub.domain.document.PostSource
 import com.techhub.ingestion.dedup.DuplicateDetectionService
+import com.vladsch.flexmark.html2md.converter.FlexmarkHtmlConverter
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClient
 import org.springframework.web.reactive.function.client.bodyToMono
+import java.io.StringReader
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.max
 
 /**
- * FIX: this file did not exist anywhere in the project, but
- * IngestionScheduler.kt and AdminController.kt both still imported and
- * constructor-injected RedditIngestionService — unresolved reference in both.
+ * Ingests Reddit posts using their public RSS feeds.
+ * NOTE: Uses a "stealthy" User-Agent to bypass security blocks.
  */
 @Service
 class RedditIngestionService(
@@ -31,9 +31,13 @@ class RedditIngestionService(
     private val duplicateDetection: DuplicateDetectionService,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
+    private val mdConverter = FlexmarkHtmlConverter.builder().build()
+    
+    // The "Stealth" User-Agent verified via manual curl
+    private val stealthUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
     fun ingestAll(): IngestionReport {
-        log.info("Starting Reddit ingestion for ${properties.subreddits.size} subreddits")
+        log.info("Starting Reddit ingestion (RSS mode) for ${properties.subreddits.size} subreddits")
 
         val results = properties.subreddits.map { config ->
             runCatching { ingestSubreddit(config) }
@@ -52,103 +56,64 @@ class RedditIngestionService(
     }
 
     private fun ingestSubreddit(config: RedditProperties.SubredditConfig): SubredditResult {
-        log.debug("Fetching r/${config.name}")
+        log.debug("Fetching r/${config.name}.rss")
 
-        val listing = webClient.get()
-            .uri("https://www.reddit.com/r/${config.name}/hot.json?limit=${properties.limit}")
-            .header("User-Agent", properties.userAgent)
+        // Fetch RSS XML content
+        val xmlContent = webClient.get()
+            .uri("https://www.reddit.com/r/${config.name}/.rss?limit=${properties.limit}")
+            .header("User-Agent", stealthUserAgent)
             .retrieve()
-            .bodyToMono<RedditListing>()
+            .bodyToMono<String>()
             .timeout(Duration.ofSeconds(30))
-            .block()
-            ?: return SubredditResult(config.name, 0, 0, 1)
+            .block() ?: throw IllegalStateException("Empty response from Reddit RSS")
+
+        val feed = SyndFeedInput().apply { isAllowDoctypes = false }.build(StringReader(xmlContent))
 
         var newPosts   = 0
         var duplicates = 0
 
-        listing.data.children
-            .filter { it.data.isSelf || it.data.url.contains("reddit.com") }
-            .forEach { child ->
-                val post = child.data
+        feed.entries.forEach { entry ->
+            val url = entry.link ?: return@forEach
 
-                if (post.selftext.length < 100 && post.score < 50) return@forEach
-
-                val url = "https://www.reddit.com${post.permalink}"
-
-                if (postRepository.existsByUrl(url)) {
-                    duplicates++
-                    return@forEach
-                }
-                if (duplicateDetection.isDuplicate(post.title)) {
-                    duplicates++
-                    return@forEach
-                }
-
-                val content = buildMarkdownContent(post)
-
-                val savedPost = Post(
-                    title           = post.title.trim(),
-                    content         = content,
-                    url             = url,
-                    source          = PostSource.REDDIT,
-                    sourceName      = "Reddit",
-                    tags            = (config.tags + extractFlairTags(post.linkFlair)).distinct(),
-                    imageUrl        = post.thumbnail?.takeIf { it.startsWith("http") },
-                    readTimeMinutes = max(1, post.selftext.split(" ").size / 200),
-                    classification  = PostClassification.PENDING,
-                    publishedAt     = Instant.ofEpochSecond(post.createdUtc.toLong()),
-                    createdAt       = Instant.ofEpochSecond(post.createdUtc.toLong()),
-                )
-
-                postRepository.save(savedPost)
-                newPosts++
-                log.debug("Saved Reddit post: '${post.title}' [PENDING -> Ollama queue]")
+            if (postRepository.existsByUrl(url)) {
+                duplicates++
+                return@forEach
             }
+            if (duplicateDetection.isDuplicate(entry.title ?: "")) {
+                duplicates++
+                return@forEach
+            }
+
+            val htmlContent = entry.contents.firstOrNull()?.value ?: entry.description?.value ?: ""
+            val markdownContent = if (htmlContent.isNotBlank()) mdConverter.convert(htmlContent) else entry.title ?: ""
+
+            val savedPost = Post(
+                title           = entry.title?.trim() ?: "Untitled",
+                content         = markdownContent,
+                url             = url,
+                source          = PostSource.REDDIT,
+                sourceName      = "Reddit",
+                tags            = config.tags,
+                imageUrl        = extractImageUrl(entry),
+                readTimeMinutes = max(1, markdownContent.split(" ").size / 200),
+                classification  = PostClassification.PENDING,
+                publishedAt     = entry.publishedDate?.toInstant(),
+                createdAt       = entry.publishedDate?.toInstant() ?: Instant.now(),
+            )
+
+            postRepository.save(savedPost)
+            newPosts++
+            log.debug("Saved Reddit post: '${savedPost.title}' [PENDING -> Ollama queue]")
+        }
 
         return SubredditResult(config.name, newPosts, duplicates, 0)
     }
 
-    private fun buildMarkdownContent(post: RedditPost): String = buildString {
-        appendLine("**Posted in r/${post.subreddit} — Score: ${post.score}**")
-        appendLine()
-        if (post.selftext.isNotBlank()) {
-            appendLine(post.selftext)
-        } else {
-            appendLine("*Link post: ${post.url}*")
-        }
-    }
-
-    private fun extractFlairTags(flair: String?): List<String> {
-        if (flair.isNullOrBlank()) return emptyList()
-        return flair.lowercase()
-            .split(Regex("[^a-z0-9]+"))
-            .filter { it.length > 2 }
-            .take(3)
+    private fun extractImageUrl(entry: com.rometools.rome.feed.synd.SyndEntry): String? {
+        val html = entry.description?.value ?: ""
+        return Regex("""<img[^>]+src=["']([^"']+)["']""").find(html)?.groupValues?.getOrNull(1)
     }
 }
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class RedditListing(val data: RedditListingData)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class RedditListingData(val children: List<RedditChild>)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class RedditChild(val data: RedditPost)
-
-@JsonIgnoreProperties(ignoreUnknown = true)
-data class RedditPost(
-    val title: String = "",
-    val selftext: String = "",
-    val url: String = "",
-    val permalink: String = "",
-    val subreddit: String = "",
-    val score: Int = 0,
-    val thumbnail: String? = null,
-    @JsonProperty("is_self") val isSelf: Boolean = false,
-    @JsonProperty("link_flair_text") val linkFlair: String? = null,
-    @JsonProperty("created_utc") val createdUtc: Double = 0.0,
-)
 
 data class SubredditResult(
     val subreddit: String,

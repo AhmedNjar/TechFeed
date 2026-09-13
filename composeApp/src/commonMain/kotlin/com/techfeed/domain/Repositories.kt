@@ -45,6 +45,8 @@ class FeedRepository(
 
     fun search(query: String): Flow<List<FeedItem>> = local.search(query)
 
+    suspend fun hideItem(id: String) = local.hideItem(id)
+
     suspend fun pruneOldCache() = local.pruneStale(CACHE_TTL_MS)
 }
 
@@ -56,6 +58,8 @@ class BookmarkRepository(private val local: FeedLocalDataSource) {
     val count: Flow<Long>               = local.bookmarkCount()
 
     fun isBookmarked(id: String): Flow<Boolean> = local.isBookmarked(id)
+
+    suspend fun remove(id: String) = local.deleteBookmark(id)
 
     suspend fun toggle(item: FeedItem) {
         val saved = local.isBookmarked(item.id).first()

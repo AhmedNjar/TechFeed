@@ -36,6 +36,7 @@ import com.techfeed.data.model.FeedTag
 import com.techfeed.presentation.*
 import com.techfeed.ui.components.*
 import com.techfeed.ui.theme.*
+import com.techfeed.ui.util.CommonBackHandler
 import com.techfeed.ui.util.WindowSizeInfo
 import com.techfeed.ui.util.windowSizeInfoOf
 import org.jetbrains.compose.resources.painterResource
@@ -67,9 +68,26 @@ fun HomeScreen(
     onShareRequest: (url: String, title: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val state by viewModel.state.collectAsState()
+
+    // ── System Back Button Handling ──────────────────────────────────────────
+    // Intercepts the phone's back button to dismiss overlays/details before
+    // exiting the app. Only enabled if there's actually something to dismiss.
+    val backEnabled = state.selectedItem != null || state.showBookmarks || 
+                      state.showForYou || state.showStats || state.isSearchActive
+
+    CommonBackHandler(enabled = backEnabled) {
+        when {
+            state.showBookmarks   -> viewModel.onIntent(FeedIntent.HideBookmarks)
+            state.showForYou      -> viewModel.onIntent(FeedIntent.HideForYou)
+            state.showStats       -> viewModel.onIntent(FeedIntent.HideStats)
+            state.selectedItem != null -> viewModel.onIntent(FeedIntent.DismissDetail)
+            state.isSearchActive  -> viewModel.onIntent(FeedIntent.ClearSearch)
+        }
+    }
+
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val windowSize = remember(maxWidth) { windowSizeInfoOf(maxWidth) }
-        val state by viewModel.state.collectAsState()
         val gridState    = rememberLazyGridState()
         val snackbarHost = remember { SnackbarHostState() }
 
@@ -164,6 +182,7 @@ fun HomeScreen(
                 onClose     = { viewModel.onIntent(FeedIntent.HideBookmarks) },
                 onItemClick = { viewModel.onIntent(FeedIntent.SelectItem(it)) },
                 onRemove    = { viewModel.onIntent(FeedIntent.ToggleBookmark(it)) },
+                onDelete    = { viewModel.onIntent(FeedIntent.DeleteItem(it)) },
             )
         }
 
@@ -181,6 +200,7 @@ fun HomeScreen(
                 onItemClick = { viewModel.onIntent(FeedIntent.SelectItem(it)) },
                 onBookmark  = { viewModel.onIntent(FeedIntent.ToggleBookmark(it)) },
                 onShare     = { viewModel.onIntent(FeedIntent.ShareItem(it)) },
+                onDelete    = { viewModel.onIntent(FeedIntent.DeleteItem(it)) },
             )
         }
 
@@ -316,6 +336,7 @@ private fun FeedGridScaffold(
                         onClick      = { onIntent(FeedIntent.SelectItem(item)) },
                         onBookmark   = { onIntent(FeedIntent.ToggleBookmark(item)) },
                         onShare      = { onIntent(FeedIntent.ShareItem(item)) },
+                        onDelete     = { onIntent(FeedIntent.DeleteItem(item)) },
                         index        = index,
                     )
                 }
@@ -570,6 +591,7 @@ fun HomeScreenPreview() {
                         onClick = {},
                         onBookmark = {},
                         onShare = {},
+                        onDelete = {},
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
                 }

@@ -1,4 +1,3 @@
-- [x] Prepare for Testing on Physical Phone
-    - [x] Update `FeedApiClient.kt` with IP placeholder and instructions
-    - [x] Mark `TechIntelligenceHubApplication` as `open`
-    - [x] Verify both modules build
+- [x] Implement AI Bypass in `PostProcessingService.kt`
+- [x] Verify build
+- [ ] Document changes in walkthrough

@@ -33,6 +33,7 @@ fun FeedCard(
     onClick: () -> Unit,
     onBookmark: () -> Unit,
     onShare: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
     index: Int = 0,
 ) {
@@ -135,6 +136,7 @@ fun FeedCard(
                 Row(
                     modifier              = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
+                    verticalAlignment     = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = onShare, modifier = Modifier.size(36.dp)) {
                         Icon(
@@ -148,6 +150,14 @@ fun FeedCard(
                         isBookmarked = isBookmarked,
                         onClick      = onBookmark,
                     )
+                    IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                        Icon(
+                            imageVector        = Icons.Rounded.Close,
+                            contentDescription = "Hide",
+                            tint               = TechFeedColors.TextMuted,
+                            modifier           = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
         }
@@ -240,7 +250,8 @@ fun FeedCardPreview() {
                 isBookmarked = false,
                 onClick = {},
                 onBookmark = {},
-                onShare = {}
+                onShare = {},
+                onDelete = {}
             )
         }
     }

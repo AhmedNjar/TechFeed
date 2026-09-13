@@ -1,5 +1,5 @@
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-pydantic==2.10.4
+fastapi>=0.115.6
+uvicorn[standard]>=0.34.0
+pydantic>=2.12.0
 scrapling[all]>=0.4.3
-trafilatura==2.0.0
+trafilatura>=2.0.0
