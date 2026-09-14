@@ -60,6 +60,8 @@ kotlin {
             implementation(libs.koin.android)
             implementation(libs.sqldelight.android.driver)
             implementation(libs.navigation.compose)
+            implementation(libs.media3.exoplayer)
+            implementation(libs.media3.ui)
             implementation(compose.preview)
             implementation(compose.uiTooling)
         }

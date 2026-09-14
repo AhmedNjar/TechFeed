@@ -60,10 +60,9 @@ class PostProcessingService(
                     }
 
                     val updated = post.copy(
-                        // Parser blocks are the deterministic fallback. Do not
-                        // discard them when Ollama is unavailable or returns no
-                        // usable structured content.
-                        contentBlocks  = result.contentBlocks.ifEmpty { post.contentBlocks },
+                        // ✅ FIX: Use full parser blocks for the body to ensure "read the whole post".
+                        // AI-generated blocks are often too short/summarized for a full reading mode.
+                        contentBlocks  = post.contentBlocks, 
                         summary        = if (result.summary.isNotBlank()) result.summary else post.content.take(180),
                         classification = result.classification,
                         rawAiResponse  = null,

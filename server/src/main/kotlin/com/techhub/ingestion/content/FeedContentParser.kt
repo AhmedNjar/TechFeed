@@ -93,12 +93,25 @@ class FeedContentParser {
         )
     }
 
-    private fun imageUrl(element: org.jsoup.nodes.Element, baseUrl: String): String? =
-        sequenceOf("src", "data-src", "data-original", "data-url")
+    private fun imageUrl(element: org.jsoup.nodes.Element, baseUrl: String): String? {
+        val direct = sequenceOf("src", "data-src", "data-original", "data-url")
             .map { element.attr(it) }
             .mapNotNull { firstUrl(it, baseUrl) }
             .firstOrNull()
-            ?: element.attr("srcset").substringBefore(',').substringBefore(' ').let { firstUrl(it, baseUrl) }
+
+        if (direct != null) return direct
+
+        // Handle srcset: pick the highest resolution (usually the last item)
+        val srcset = element.attr("srcset")
+        if (srcset.isNotBlank()) {
+            return srcset.split(',')
+                .map { it.trim().substringBefore(' ') }
+                .mapNotNull { firstUrl(it, baseUrl) }
+                .lastOrNull()
+        }
+
+        return null
+    }
 
     private fun markdownLinks(raw: String, baseUrl: String): List<MarkdownLink> {
         val pattern = Regex("""(!)?\[([^]]*)]\(([^\s)]+)(?:\s+"[^"]*")?\)""")
@@ -117,15 +130,24 @@ class FeedContentParser {
             .toList()
 
     private fun htmlBlocks(document: org.jsoup.nodes.Document): List<ContentBlock> {
-        val blocks = document.select("pre, blockquote, h1, h2, h3, h4, h5, h6, p, li")
-            .filterNot { element -> element.parents().any { parent ->
-                parent.tagName() in setOf("pre", "blockquote", "p", "li")
-            } }
+        val blocks = document.select("pre, blockquote, h1, h2, h3, h4, h5, h6, p, li, img")
+            .filterNot { element ->
+                element.parents().any { parent ->
+                    parent.tagName() in setOf("pre", "blockquote", "p", "li")
+                }
+            }
             .mapNotNull { element ->
-                val text = (if (element.tagName() == "pre") {
-                    element.selectFirst("code")?.wholeText() ?: element.wholeText()
-                } else element.text()).trim()
-                toBlock(element.tagName(), text)
+                if (element.tagName() == "img") {
+                    val url = imageUrl(element, document.baseUri())
+                    if (url != null) {
+                        ContentBlock(type = "image", url = url, value = element.attr("alt").trim())
+                    } else null
+                } else {
+                    val text = (if (element.tagName() == "pre") {
+                        element.selectFirst("code")?.wholeText() ?: element.wholeText()
+                    } else element.text()).trim()
+                    toBlock(element.tagName(), text)
+                }
             }
         return blocks.ifEmpty {
             document.body().wholeText()

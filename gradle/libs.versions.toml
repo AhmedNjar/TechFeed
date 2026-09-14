@@ -34,6 +34,9 @@ koin                  = "4.0.1"
 # ── Image Loading ──────────────────────────────────────────────────────────────
 coil                  = "3.1.0"
 
+# ── Media ─────────────────────────────────────────────────────────────────────
+media3                = "1.4.1"
+
 # ── Navigation ────────────────────────────────────────────────────────────────
 navigation            = "2.8.0-alpha10"
 
@@ -64,6 +67,10 @@ koin-compose              = { module = "io.insert-koin:koin-compose",           
 # ── Coil ──────────────────────────────────────────────────────────────────────
 coil-compose              = { module = "io.coil-kt.coil3:coil-compose",                    version.ref = "coil" }
 coil-network-ktor         = { module = "io.coil-kt.coil3:coil-network-ktor3",              version.ref = "coil" }
+
+# ── Media3 ────────────────────────────────────────────────────────────────────
+media3-exoplayer          = { module = "androidx.media3:media3-exoplayer",                 version.ref = "media3" }
+media3-ui                 = { module = "androidx.media3:media3-ui",                        version.ref = "media3" }
 
 # ── Navigation ────────────────────────────────────────────────────────────────
 navigation-compose        = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigation" }

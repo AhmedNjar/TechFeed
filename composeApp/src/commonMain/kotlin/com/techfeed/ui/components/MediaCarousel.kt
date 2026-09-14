@@ -121,35 +121,11 @@ private fun MediaPage(item: MediaItem, onImageClick: () -> Unit) {
 
 @Composable
 private fun VideoPreview(item: MediaItem.Video) {
-    val uriHandler = LocalUriHandler.current
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (item.thumbnailUrl != null) {
-            AsyncImage(
-                model = item.thumbnailUrl,
-                contentDescription = "Video preview",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Box(Modifier.fillMaxSize().background(TechFeedColors.Surface700))
-        }
-        IconButton(
-            onClick = { uriHandler.openUri(item.streamUrl) },
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(60.dp)
-                .clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.58f)),
-        ) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = "Open video", tint = Color.White, modifier = Modifier.size(36.dp))
-        }
-        Text(
-            "Video",
-            style = TechFeedType.Caption,
-            color = Color.White,
-            modifier = Modifier.align(Alignment.BottomStart).padding(12.dp),
-        )
-    }
+    PlatformVideoPlayer(
+        url = item.streamUrl,
+        thumbnailUrl = item.thumbnailUrl,
+        modifier = Modifier.fillMaxSize()
+    )
 }
 
 @Composable
