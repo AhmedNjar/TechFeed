@@ -143,10 +143,11 @@ class FeedContentParser {
                         ContentBlock(type = "image", url = url, value = element.attr("alt").trim())
                     } else null
                 } else {
-                    val text = (if (element.tagName() == "pre") {
+                    val rawText = (if (element.tagName() == "pre") {
                         element.selectFirst("code")?.wholeText() ?: element.wholeText()
                     } else element.text()).trim()
-                    toBlock(element.tagName(), text)
+                    val cleaned = cleanInlineMarkdown(rawText)
+                    if (cleaned.isNotBlank()) toBlock(element.tagName(), cleaned) else null
                 }
             }
         return blocks.ifEmpty {
@@ -224,8 +225,8 @@ class FeedContentParser {
     }
 
     private fun cleanInlineMarkdown(value: String): String = value
-        .replace(Regex("!\\[([^]]*)]\\([^)]*\\)"), "$1")
-        .replace(Regex("\\[([^]]+)]\\([^)]*\\)"), "$1")
+        .replace(Regex("!\\[([^]]*)]\\s*\\([^)]*\\)"), "$1")
+        .replace(Regex("\\[([^]]*)]\\s*\\([^)]*\\)"), "$1")
         .replace(Regex("(`{1,3})(.*?)\\1"), "$2")
         .replace(Regex("(\\*\\*|__)(.*?)\\1"), "$2")
         .replace(Regex("\\s+"), " ")

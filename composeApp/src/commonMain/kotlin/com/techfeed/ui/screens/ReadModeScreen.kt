@@ -39,6 +39,7 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import techfeed.composeapp.generated.resources.Res
+import techfeed.composeapp.generated.resources.nasa
 import techfeed.composeapp.generated.resources.outline_open_in_browser_24
 
 /**
@@ -80,26 +81,33 @@ fun ReadModeScreen(
                 .fillMaxSize()
                 .verticalScroll(scrollState),
         ) {
-            // Keep legacy items readable. Normalized media is rendered separately
-            // below, so it is not duplicated as the old single-image hero.
-            if (item.mediaList.isEmpty()) item.imageUrl?.let { url ->
-                Box(Modifier.fillMaxWidth().height(260.dp)) {
+            // ── Hero Image ────────────────────────────────────────────────
+            Box(Modifier.fillMaxWidth().height(280.dp)) {
+                if (!item.imageUrl.isNullOrBlank()) {
                     AsyncImage(
-                        model              = url,
+                        model              = item.imageUrl,
                         contentDescription = "Hero image",
                         contentScale       = ContentScale.Crop,
                         modifier           = Modifier.fillMaxSize(),
                     )
-                    Box(
-                        modifier = Modifier.fillMaxSize().background(
-                            Brush.verticalGradient(
-                                0.4f to TechFeedColors.Surface900.copy(alpha = 0f),
-                                1.0f to TechFeedColors.Surface900,
-                            )
-                        )
+                } else {
+                    Image(
+                        painter            = painterResource(Res.drawable.nasa),
+                        contentDescription = "Default hero image",
+                        contentScale       = ContentScale.Crop,
+                        modifier           = Modifier.fillMaxSize(),
                     )
                 }
-            } else if (item.mediaList.isEmpty()) Spacer(Modifier.height(104.dp))
+                // Gradient overlay for smooth transition to content
+                Box(
+                    modifier = Modifier.fillMaxSize().background(
+                        Brush.verticalGradient(
+                            0.6f to TechFeedColors.Surface900.copy(alpha = 0f),
+                            1.0f to TechFeedColors.Surface900,
+                        )
+                    )
+                )
+            }
 
             // ── Reading column — centered and width-capped on wide windows ───
             Column(
