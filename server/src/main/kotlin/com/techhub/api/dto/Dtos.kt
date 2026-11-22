@@ -8,6 +8,7 @@ import com.techhub.ingestion.content.FeedContentParser
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
 import org.hibernate.validator.constraints.URL
+import org.slf4j.LoggerFactory
 import java.time.Instant
 
 // ── Mobile App Response ───────────────────────────────────────────────────────
@@ -86,41 +87,43 @@ data class StatsDto(
 // ── Mapper ────────────────────────────────────────────────────────────────────
 
 fun Post.toDto(): PostDto {
-    // Older posts were saved before parser blocks existed. Normalize those at
-    // response time so they are readable immediately; new ingestions persist
-    // the same blocks and therefore skip this fallback.
-    val legacyContent = if (contentBlocks.isEmpty()) {
-        LEGACY_CONTENT_PARSER.parse(content, url, author)
-    } else null
-    val normalizedSummary = legacyContent?.contentBlocks
-        ?.firstOrNull { it.type == "text" || it.type == "quote" }
-        ?.value
-        ?.take(200)
-        ?.takeIf(String::isNotBlank)
-        ?: summary
+    return try {
+        // Older posts were saved before parser blocks existed. Normalize those at
+        // response time so they are readable immediately.
+        val legacyContent = if (contentBlocks.isEmpty()) {
+            LEGACY_CONTENT_PARSER.parse(content, url, author)
+        } else null
 
-    return PostDto(
-    id            = id ?: "",
-    title         = title,
-    contentBlocks = contentBlocks.ifEmpty { legacyContent?.contentBlocks.orEmpty() },
-    summary       = normalizedSummary,
-    cleanBodyText = legacyContent?.cleanBodyText ?: content,
-    url           = url,
-    // ✅ FIX: use the actual per-post source name (e.g. "Dev.to", "Kotlin Blog")
-    // instead of the coarse PostSource enum, which collapses every RSS blog
-    // into a single "RSS" label. Falls back to the enum name if sourceName
-    // wasn't set (e.g. posts ingested before this field existed).
-    source        = sourceName.ifBlank { source.name },
-    tags          = tags,
-    imageUrl      = imageUrl,
-    mediaList     = mediaList,
-    articleUrl    = articleUrl,
-    commentsUrl   = commentsUrl,
-    author        = author,
-    readTimeMinutes = readTimeMinutes,
-    // ✅ F-3: use publishedAt if available, else fall back to createdAt
-    publishedAt   = (publishedAt ?: createdAt).toString(),
-    )
+        val normalizedSummary = legacyContent?.contentBlocks
+            ?.firstOrNull { it.type == "text" || it.type == "quote" }
+            ?.value
+            ?.take(200)
+            ?.takeIf(String::isNotBlank)
+            ?: summary
+
+        PostDto(
+            id            = id ?: "",
+            title         = title,
+            contentBlocks = contentBlocks.ifEmpty { legacyContent?.contentBlocks.orEmpty() },
+            summary       = normalizedSummary,
+            cleanBodyText = legacyContent?.cleanBodyText ?: content,
+            url           = url,
+            // ✅ Resilience: Handle potential null/blank source from manual DB edits
+            source        = sourceName.takeIf { it.isNotBlank() } ?: source?.name ?: "Unknown",
+            tags          = tags,
+            imageUrl      = imageUrl,
+            mediaList     = mediaList,
+            articleUrl    = articleUrl,
+            commentsUrl   = commentsUrl,
+            author        = author,
+            readTimeMinutes = readTimeMinutes,
+            publishedAt   = (publishedAt ?: createdAt).toString(),
+        )
+    } catch (e: Exception) {
+        // Log the failure to help identify which document is broken
+        LoggerFactory.getLogger("PostMapper").error("Failed to map post $id: ${e.message}")
+        throw e
+    }
 }
 
 private val LEGACY_CONTENT_PARSER = FeedContentParser()

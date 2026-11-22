@@ -42,7 +42,7 @@ data class Post(
     @Indexed(unique = true)
     val url: String,
 
-    val source: PostSource,
+    val source: PostSource? = PostSource.RSS,
 
     /** ✅ FIX: human-readable origin name sent to mobile, e.g. "Dev.to", "Kotlin Blog",
      *  "Reddit", "GitHub Trending", "Saved". PostSource alone can't represent this —
@@ -85,7 +85,7 @@ data class Post(
 // ── Content Block — mirrors the KMP app's ContentBlock model ─────────────────
 
 data class ContentBlock(
-    val type: String,     // "heading" | "text" | "image" | "code" | "quote" | "divider"
+    val type: String = "text",     // "heading" | "text" | "image" | "code" | "quote" | "divider"
     val value: String  = "",
     val url: String    = "",
     val style: String  = "",  // "h1"|"h2"|"h3"|"bold"|"normal"

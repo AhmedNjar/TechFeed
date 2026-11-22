@@ -38,7 +38,7 @@ class GlobalExceptionHandler {
             .body(ErrorResponse(
                 status  = 500,
                 error   = "Internal Server Error",
-                message = "Something went wrong. Please try again.",
+                message = "${ex.javaClass.simpleName}: ${ex.message}",
             ))
     }
 }

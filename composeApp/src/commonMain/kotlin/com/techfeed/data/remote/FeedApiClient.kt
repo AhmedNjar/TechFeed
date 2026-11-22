@@ -56,25 +56,50 @@ class FeedApiClient(private val client: HttpClient) {
         page: Int   = 0,
         size: Int   = 20,
     ): Result<FeedResponse> = runCatching {
-        val dto: PostPageResponse = client.get("posts") {
+        val response = client.get("posts") {
             parameter("tag",  tag)
             parameter("page", page)
             parameter("size", size)
-        }.body()
+        }
+        
+        if (!response.status.isSuccess()) {
+            val error = try { response.body<ErrorResponse>() } catch (e: Exception) { null }
+            throw ApiException(
+                message = error?.message ?: "Server returned ${response.status.value}",
+                status = response.status.value
+            )
+        }
+
+        val dto: PostPageResponse = response.body()
         dto.toFeedResponse()
     }
 
     suspend fun getItem(id: String): Result<FeedItem> = runCatching {
-        client.get("posts/$id").body()
+        val response = client.get("posts/$id")
+        if (!response.status.isSuccess()) throw ApiException("Item not found", response.status.value)
+        response.body()
     }
 
     /** ✅ NEW: backs RelatedArticlesRepository */
     suspend fun getRelated(id: String, limit: Int = 5): Result<List<FeedItem>> = runCatching {
-        client.get("posts/$id/related") {
+        val response = client.get("posts/$id/related") {
             parameter("limit", limit)
-        }.body()
+        }
+        if (!response.status.isSuccess()) throw ApiException("Related items error", response.status.value)
+        response.body()
     }
 }
+
+// ── Error Models ─────────────────────────────────────────────────────────────
+
+@kotlinx.serialization.Serializable
+data class ErrorResponse(
+    val status: Int,
+    val error: String,
+    val message: String,
+)
+
+class ApiException(override val message: String, val status: Int) : Exception(message)
 
 // ── Backend response shape ────────────────────────────────────────────────────
 

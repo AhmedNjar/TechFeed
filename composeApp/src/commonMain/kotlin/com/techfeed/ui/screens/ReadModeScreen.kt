@@ -83,12 +83,15 @@ fun ReadModeScreen(
         ) {
             // ── Hero Image ────────────────────────────────────────────────
             Box(Modifier.fillMaxWidth().height(280.dp)) {
-                if (!item.imageUrl.isNullOrBlank()) {
+                var isError by remember { mutableStateOf(false) }
+                
+                if (!item.imageUrl.isNullOrBlank() && !isError) {
                     AsyncImage(
                         model              = item.imageUrl,
                         contentDescription = "Hero image",
                         contentScale       = ContentScale.Crop,
                         modifier           = Modifier.fillMaxSize(),
+                        onError            = { isError = true }
                     )
                 } else {
                     Image(

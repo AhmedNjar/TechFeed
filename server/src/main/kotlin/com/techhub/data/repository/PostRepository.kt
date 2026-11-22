@@ -29,6 +29,8 @@ interface PostRepository : MongoRepository<Post, String> {
     /** Duplicate prevention — check before inserting */
     fun existsByUrl(url: String): Boolean
 
+    fun deleteByUrl(url: String)
+
     /** Fetch pending posts for Ollama processing (batch) */
     fun findByClassificationOrderByCreatedAtAsc(
         classification: PostClassification,
