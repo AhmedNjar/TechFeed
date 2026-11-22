@@ -1,3 +1,0 @@
-- [x] Implement AI Bypass in `PostProcessingService.kt`
-- [x] Verify build
-- [ ] Document changes in walkthrough
