@@ -38,33 +38,23 @@ open class AppConfig {
         .registerKotlinModule()
         .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
 
-    // ── ✅ M-3 FIX: CORS config ───────────────────────────────────────────────
-    // Local demo: allow all origins.
-    // For production deploy: replace "*" with your actual domain.
     @Bean
     fun corsConfigurer(): WebMvcConfigurer = object : WebMvcConfigurer {
         override fun addCorsMappings(registry: CorsRegistry) {
             registry.addMapping("/api/**")
-                .allowedOrigins("*")               // ← replace with domain in prod
+                .allowedOrigins("*")
                 .allowedMethods("GET", "POST", "OPTIONS")
                 .allowedHeaders("*")
                 .maxAge(3600)
         }
 
-        // ✅ NEW: /admin → /admin/index.html convenience redirect
         override fun addViewControllers(registry: org.springframework.web.servlet.config.annotation.ViewControllerRegistry) {
             registry.addRedirectViewController("/admin", "/admin/index.html")
         }
     }
 
-    // ── ✅ C-3 FIX: Manual index creation on startup (NOT auto-index-creation) ──
-    // auto-index-creation=true causes MongoDB collection locks on every startup.
-    // We run this ONCE after app is ready using ApplicationReadyEvent.
     @EventListener(ApplicationReadyEvent::class)
     fun ensureIndexes(event: ApplicationReadyEvent) {
-        // ✅ WARN-3 FIX: Index directly on the known entity classes.
-        // Old approach iterated collectionNames — on first run (empty DB) no collections
-        // exist yet so no indexes would be created.
         val mongoTemplate  = event.applicationContext.getBean(MongoTemplate::class.java)
         val mappingContext = event.applicationContext.getBean(MongoMappingContext::class.java)
         val resolver       = MongoPersistentEntityIndexResolver(mappingContext)
@@ -74,26 +64,21 @@ open class AppConfig {
                 val indexOps = mongoTemplate.indexOps(entityClass)
                 resolver.resolveIndexFor(entityClass).forEach { indexOps.ensureIndex(it) }
             } catch (e: Exception) {
-                // non-fatal — indexes may already exist or class may not be mapped yet
                 org.slf4j.LoggerFactory.getLogger(AppConfig::class.java)
                     .warn("Could not ensure index for $entityClass: ${e.message}")
             }
         }
     }
 
-    // ── ✅ M-4 FIX: Dedicated thread pool for async Ollama processing ─────────
     @Bean("processingExecutor")
     fun processingExecutor(): Executor = ThreadPoolTaskExecutor().apply {
-        corePoolSize    = 2    // 2 threads max for Ollama on local machine
-        maxPoolSize     = 2    // don't overwhelm local Ollama
+        corePoolSize    = 2
+        maxPoolSize     = 2
         queueCapacity   = 50
         threadNamePrefix = "ollama-"
         initialize()
     }
 
-    // ── ✅ M-6 FIX + BUG-6 FIX: Ollama Health Indicator ────────────────────────
-    // BUG-6: was creating a NEW WebClient on every health check poll (every 10s).
-    // Fix: inject the existing @Qualifier("ollamaWebClient") bean — reuse the connection pool.
     @Bean
     fun ollamaHealthIndicator(
         ollamaProperties: OllamaProperties,

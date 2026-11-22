@@ -559,9 +559,6 @@ fun HomeScreenPreview() {
                     onClick        = { },
                     containerColor = TechFeedColors.Surface700,
                     contentColor   = TechFeedColors.Accent,
-                    // FIX: was Icons.Filled.Share (a sharing icon on a bookmarks
-                    // FAB made no sense — copy/paste leftover). Matches the real
-                    // FAB's icon now.
                     icon           = { Icon(painter = painterResource(Res.drawable.rounded_bookmark_24), contentDescription = null) },
                     text           = { Text("${state.bookmarkCount} saved", style = TechFeedType.Caption) },
                 )

@@ -19,26 +19,15 @@ class PostProcessingService(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    init {
-        log.info("🚀 PostProcessingService initialized. Scheduling active.")
-    }
-
     @Scheduled(fixedDelay = 10_000)
     fun processPendingPosts() {
         try {
-            val pendingCount = postRepository.countByClassification(PostClassification.PENDING)
-            if (pendingCount > 0) {
-                log.info("Found $pendingCount PENDING posts to process")
-            }
-
             val pending = postRepository.findByClassificationOrderByCreatedAtAsc(
                 PostClassification.PENDING,
                 PageRequest.of(0, BATCH_SIZE),
             )
 
             if (pending.isEmpty) return
-
-            log.info("Processing ${pending.numberOfElements} PENDING posts")
 
             pending.content.forEach { post ->
                 try {
@@ -48,9 +37,8 @@ class PostProcessingService(
                         null
                     }
 
-                    // ── DEV BYPASS ────────────────────────────────────────────────
                     if (result == null || result.classification == PostClassification.ERROR || result.classification == PostClassification.PENDING) {
-                        log.warn("Ollama failed or returned error for '${post.title}' — applying DEV BYPASS")
+                        log.warn("Ollama failed or returned error for '${post.title}' — applying bypass")
                         result = AiResult(
                             summary        = post.content.take(180).replace("\n", " ") + "...",
                             contentBlocks  = emptyList(),
@@ -60,8 +48,6 @@ class PostProcessingService(
                     }
 
                     val updated = post.copy(
-                        // ✅ FIX: Use full parser blocks for the body to ensure "read the whole post".
-                        // AI-generated blocks are often too short/summarized for a full reading mode.
                         contentBlocks  = post.contentBlocks, 
                         summary        = if (result.summary.isNotBlank()) result.summary else post.content.take(180),
                         classification = result.classification,
@@ -70,8 +56,6 @@ class PostProcessingService(
                     )
 
                     postRepository.save(updated)
-                    log.debug("Processed '${post.title}' -> ${result.classification}")
-
                 } catch (ex: Exception) {
                     log.error("Failed to process post '${post.title}': ${ex.message}")
                     postRepository.save(
@@ -83,7 +67,7 @@ class PostProcessingService(
                 }
             }
         } catch (ex: Exception) {
-            log.error("CRITICAL: processPendingPosts crashed: ${ex.message}")
+            log.error("Error processing pending posts: ${ex.message}")
         }
     }
 

@@ -15,14 +15,6 @@ import org.springframework.web.reactive.function.client.bodyToMono
 import reactor.core.scheduler.Schedulers
 import java.time.Duration
 
-/**
- * FIX: this file did not exist anywhere in the project. Sends post content
- * to Ollama and gets back a classification (TECHNICAL/SPAM) plus structured
- * ContentBlocks for the KMP app's ContentRenderer. Without this, nothing can
- * ever promote a post out of PENDING classification (see PostProcessingService),
- * so the mobile feed — which only shows TECHNICAL posts — would stay
- * permanently empty no matter how many articles were successfully ingested.
- */
 @Service
 class OllamaService(
     @Qualifier("ollamaWebClient")
@@ -45,8 +37,6 @@ class OllamaService(
             )
         }
     }
-
-    // ── Prompt ────────────────────────────────────────────────────────────────
 
     private fun buildPrompt(title: String, content: String): String {
         val truncated = content.take(4000)
@@ -106,8 +96,6 @@ CONTENT_BLOCKS RULES (only if TECHNICAL, else return empty array []):
         return response.response
     }
 
-    // ── Response Parser ───────────────────────────────────────────────────────
-
     private fun parseResponse(raw: String): AiResult {
         return try {
             val cleaned = raw
@@ -165,8 +153,6 @@ CONTENT_BLOCKS RULES (only if TECHNICAL, else return empty array []):
             .registerModule(KotlinModule.Builder().build())
     }
 }
-
-// ── Data classes ──────────────────────────────────────────────────────────────
 
 data class AiResult(
     val summary: String,

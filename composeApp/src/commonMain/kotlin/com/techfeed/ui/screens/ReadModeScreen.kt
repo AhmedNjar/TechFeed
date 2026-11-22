@@ -124,10 +124,6 @@ fun ReadModeScreen(
                         .padding(horizontal = 24.dp),
                 ) {
                     // Source + read time
-                    // FIX: was `item.source.displayName.uppercase()` — `FeedSource`
-                    // and its `displayName` extension were removed from the model
-                    // (source is a plain free-text String now), so this didn't
-                    // compile. `item.source` is already the display string.
                     Row(
                         modifier              = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -356,10 +352,6 @@ private fun RelatedCardSkeleton() {
 @Preview
 @Composable
 fun ReadModeScreenPreview() {
-    // FIX: was `source = FeedSource.DEV_TO` — that enum was removed from the
-    // model (source is a plain String now). Also removed an unrelated stray
-    // import (`androidx.compose.ui.input.key.Key.Companion.R`) that had
-    // nothing to do with this file.
     val sampleItem = FeedItem(
         id = "1",
         title = "The Future of Kotlin Multiplatform",

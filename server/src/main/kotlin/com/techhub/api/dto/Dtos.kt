@@ -13,27 +13,12 @@ import java.time.Instant
 
 // ── Mobile App Response ───────────────────────────────────────────────────────
 
-/**
- * ✅ C-1 FIX: PostDto now includes contentBlocks for the KMP ContentRenderer.
- *
- * Field mapping to KMP app:
- *   contentBlocks → ContentRenderer(blocks = item.contentBlocks)
- *   summary       → FeedCard snippet (plain text preview)
- *   publishedAt   → displayed in ReadMode and card
- */
 data class PostDto(
     val id: String,
     val title: String,
-
-    /** Structured content for ReadModeScreen — rendered by ContentRenderer */
     val contentBlocks: List<ContentBlock> = emptyList(),
-
-    /** Plain-text card preview (≤ 200 chars) */
     val summary: String,
-
-    /** Deterministically sanitized source text; not dependent on AI processing. */
     val cleanBodyText: String = "",
-
     val url: String,
     val source: String,
     val tags: List<String>,
@@ -43,8 +28,6 @@ data class PostDto(
     val commentsUrl: String? = null,
     val author: String? = null,
     val readTimeMinutes: Int,
-
-    /** ✅ F-3 FIX: publishedAt from the source, not ingestion time */
     val publishedAt: String,
 )
 
@@ -88,8 +71,6 @@ data class StatsDto(
 
 fun Post.toDto(): PostDto {
     return try {
-        // Older posts were saved before parser blocks existed. Normalize those at
-        // response time so they are readable immediately.
         val legacyContent = if (contentBlocks.isEmpty()) {
             LEGACY_CONTENT_PARSER.parse(content, url, author)
         } else null
@@ -108,7 +89,6 @@ fun Post.toDto(): PostDto {
             summary       = normalizedSummary,
             cleanBodyText = legacyContent?.cleanBodyText ?: content,
             url           = url,
-            // ✅ Resilience: Handle potential null/blank source from manual DB edits
             source        = sourceName.takeIf { it.isNotBlank() } ?: source?.name ?: "Unknown",
             tags          = tags,
             imageUrl      = imageUrl,
@@ -120,7 +100,6 @@ fun Post.toDto(): PostDto {
             publishedAt   = (publishedAt ?: createdAt).toString(),
         )
     } catch (e: Exception) {
-        // Log the failure to help identify which document is broken
         LoggerFactory.getLogger("PostMapper").error("Failed to map post $id: ${e.message}")
         throw e
     }

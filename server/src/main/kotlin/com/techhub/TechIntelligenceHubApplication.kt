@@ -10,9 +10,6 @@ import org.springframework.scheduling.annotation.EnableAsync
 import org.springframework.scheduling.annotation.EnableScheduling
 import org.springframework.stereotype.Component
 
-// FIX: this file did not exist anywhere in the project - there was no
-// @SpringBootApplication class, meaning no `main()` function, meaning the
-// server could not start at all, independent of every other issue.
 @SpringBootApplication(scanBasePackages = ["com.techhub"])
 @EnableScheduling
 @EnableAsync

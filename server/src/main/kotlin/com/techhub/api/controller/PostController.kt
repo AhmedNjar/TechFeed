@@ -24,9 +24,6 @@ class PostController(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    // ── ✅ M-1 FIX + BUG-4 FIX: Thread-safe rate limiter ───────────────────────
-    // windowStart was a non-synchronized var — race condition on concurrent requests.
-    // Fixed: use AtomicLong for windowStart so compare-and-reset is atomic.
     private val requestCounts = ConcurrentHashMap<String, AtomicInteger>()
     private val windowStart   = java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
     private val WINDOW_MS     = 60_000L
@@ -34,7 +31,6 @@ class PostController(
 
     private fun isRateLimited(request: HttpServletRequest): Boolean {
         val now = System.currentTimeMillis()
-        // AtomicLong.compareAndSet ensures only one thread resets the window
         if (now - windowStart.get() > WINDOW_MS) {
             if (windowStart.compareAndSet(windowStart.get(), now)) {
                 requestCounts.clear()
@@ -45,15 +41,12 @@ class PostController(
         return count > MAX_REQUESTS
     }
 
-    // ── ✅ m-4 FIX: Search query sanitization ────────────────────────────────
     private fun sanitizeQuery(query: String): String =
         query
-            .replace(Regex("[{}\\[\\]\\$\\(\\)]"), "")   // strip MongoDB special chars
+            .replace(Regex("[{}\\[\\]\\$\\(\\)]"), "")
             .replace(Regex("\\s+"), " ")
             .trim()
-            .take(100)                                      // max 100 chars
-
-    // ── Mobile Feed ───────────────────────────────────────────────────────────
+            .take(100)
 
     @GetMapping("/posts")
     fun getPosts(
@@ -67,7 +60,6 @@ class PostController(
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build()
 
         val pageSize = if (size > 0) minOf(size, 50) else apiProperties.pageSize
-        // ✅ M-5 FIX: sort by publishedAt DESC (original publish time, not ingestion time)
         val pageable = PageRequest.of(
             page, pageSize,
             Sort.by(Sort.Direction.DESC, "publishedAt").and(
@@ -110,7 +102,6 @@ class PostController(
         return ResponseEntity.ok(post.toDto())
     }
 
-    // ✅ NEW: Related articles — used by ReadModeScreen's "Related" section
     @GetMapping("/posts/{id}/related")
     fun getRelatedPosts(
         @PathVariable id: String,
@@ -132,15 +123,12 @@ class PostController(
         return ResponseEntity.ok(related.content.map { it.toDto() })
     }
 
-    // ── Chrome Extension Save ─────────────────────────────────────────────────
-
     @PostMapping("/posts/save")
     fun saveFromExtension(
         @RequestHeader("X-Extension-Secret") secret: String,
         @Valid @RequestBody request: SavePostRequest,
         httpRequest: HttpServletRequest,
     ): ResponseEntity<PostDto> {
-        // ✅ M-2 FIX: Validate secret properly + log suspicious access
         if (!validateSecret(secret, httpRequest)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
         }
@@ -156,13 +144,11 @@ class PostController(
             sourceName     = "Saved",
             tags           = listOf("saved"),
             imageUrl       = request.imageUrl,
-            classification = PostClassification.PENDING,  // Ollama picks it up async
+            classification = PostClassification.PENDING,
         )
         val saved = postRepository.save(post)
         return ResponseEntity.status(HttpStatus.CREATED).body(saved.toDto())
     }
-
-    // ── Stats ─────────────────────────────────────────────────────────────────
 
     @GetMapping("/stats")
     fun getStats(): StatsDto = StatsDto(
@@ -170,7 +156,6 @@ class PostController(
         totalSpam      = postRepository.countByClassification(PostClassification.SPAM),
         totalPending   = postRepository.countByClassification(PostClassification.PENDING),
         totalError     = postRepository.countByClassification(PostClassification.ERROR),
-        // ✅ NEW: populated via MongoDB aggregation (was a stub before)
         sourceCounts   = postRepository.countGroupedBySource(PostClassification.TECHNICAL)
             .associate { it.getId() to it.getCount() },
     )
