@@ -1,4 +1,4 @@
-package com.example.techfeed
+package com.techfeed
 
 import androidx.compose.ui.window.ComposeUIViewController
 import com.techfeed.App
@@ -9,17 +9,6 @@ import platform.Foundation.NSURL
 import platform.UIKit.UIActivityViewController
 import platform.UIKit.UIApplication
 
-// FIX: two separate bugs here previously.
-//
-// 1. This called the wizard placeholder `App()` (no real UI ever reachable
-//    on iOS) instead of the real, now-fixed shared `App(onShareRequest)`.
-//
-// 2. Koin was never started anywhere on iOS. Android has its own startup in
-//    TechFeedApp.onCreate() (see MainActivity.kt); iOS had no equivalent at
-//    all, so the moment any screen called koinInject() it would crash with
-//    "KoinApplication has not been started". Started once here, before the
-//    Compose UI is built, mirroring Android's DriverFactory wiring (iOS's
-//    DriverFactory needs no Context, unlike Android's).
 private var koinStarted = false
 
 fun MainViewController() = ComposeUIViewController {

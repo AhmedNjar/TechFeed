@@ -54,8 +54,6 @@ val DarkColorScheme = darkColorScheme(
 
 // ── Typography ────────────────────────────────────────────────────────────────
 
-// Using system fonts here — swap with your bundled .ttf via Font() if desired
-// e.g. Font(R.font.jetbrains_mono_bold) for a very dev-centric feel
 object TechFeedType {
     val DisplayLarge = TextStyle(
         fontFamily = FontFamily.Default,

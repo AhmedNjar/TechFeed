@@ -1,4 +1,4 @@
-package com.example.techfeed
+package com.techfeed
 
 import platform.UIKit.UIDevice
 

@@ -1,4 +1,4 @@
-package com.example.techfeed
+package com.techfeed
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

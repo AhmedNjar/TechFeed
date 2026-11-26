@@ -15,14 +15,6 @@ import kotlinx.serialization.json.Json
 
 // ── Network Config ────────────────────────────────────────────────────────────
 
-/**
- * ⚠️ IMPORTANT FOR PHYSICAL DEVICE TESTING:
- * 1. Find your computer's local IP (terminal: `ipconfig` on Windows, `ifconfig` on Mac).
- * 2. Replace "localhost" with that IP below (e.g., "http://192.168.1.8:8080/api/").
- * 3. Ensure your phone and computer are on the SAME Wi-Fi network.
- *
- * Emulator Tip: "http://10.0.2.2:8080/api/" works for the standard Android emulator.
- */
 private const val BASE_URL = "http://localhost:8080/api/"
 
 fun buildHttpClient(engine: HttpClientEngine): HttpClient = HttpClient(engine) {
@@ -80,7 +72,7 @@ class FeedApiClient(private val client: HttpClient) {
         response.body()
     }
 
-    /** ✅ NEW: backs RelatedArticlesRepository */
+    /** backs RelatedArticlesRepository */
     suspend fun getRelated(id: String, limit: Int = 5): Result<List<FeedItem>> = runCatching {
         val response = client.get("posts/$id/related") {
             parameter("limit", limit)

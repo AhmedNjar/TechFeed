@@ -6,15 +6,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 
-/**
- * "For You" — the simplest honest form of personalization: rank tags by how
- * much the user has engaged with them (bookmarks weighted higher than reads,
- * since saving is a stronger signal than a passive open), then pull cached
- * articles matching those top tags.
- *
- * No ML, no server-side model — just weighted tag frequency. Transparent and
- * fast, which matters more for a v1 than sophistication.
- */
 class ForYouRepository(
     private val local: FeedLocalDataSource,
     private val bookmarkRepo: BookmarkRepository,
@@ -50,8 +41,6 @@ class ForYouRepository(
 
     /**
      * One-shot fetch for the "For You" screen. Pulls from the local cache only
-     * (fast, offline-friendly) — the regular tag feeds already keep the cache
-     * warm via the normal browsing flow.
      */
     suspend fun loadForYouFeed(): ForYouResult {
         val tags = topTags.first()
@@ -60,7 +49,9 @@ class ForYouRepository(
         val seen = LinkedHashMap<String, FeedItem>()
         tags.forEach { tagCount ->
             local.getCachedByTagKeyword(tagCount.tag, PER_TAG_LIMIT).first().forEach { item ->
-                seen.putIfAbsent(item.id, item)
+                if (!seen.containsKey(item.id)) {
+                    seen[item.id] = item
+                }
             }
         }
 

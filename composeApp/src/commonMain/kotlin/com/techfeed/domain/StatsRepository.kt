@@ -38,7 +38,6 @@ class StatsRepository(private val local: FeedLocalDataSource) {
 
     // ── Streak logic ──────────────────────────────────────────────────────────
     // A "day" bucket is derived from epoch millis / 86_400_000 (UTC day index).
-    // Simple and timezone-naive — good enough for a reading-streak feature.
 
     private fun toDayBuckets(timestamps: List<Long>): List<Long> =
         timestamps.map { it / 86_400_000L }.distinct().sortedDescending()

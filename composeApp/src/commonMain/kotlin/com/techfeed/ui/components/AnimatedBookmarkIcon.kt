@@ -25,14 +25,9 @@ import techfeed.composeapp.generated.resources.round_bookmark_24
 import techfeed.composeapp.generated.resources.rounded_bookmark_24
 
 /**
- * A bookmark toggle used identically in FeedCard, ReadModeScreen, and the
+ * A bookmark toggle used in FeedCard, ReadModeScreen, and the
  * bookmark list screens — one shared animation so the gesture feels the same
  * everywhere in the app.
- *
- * On an actual state flip (not on first appearance — e.g. scrolling a
- * card that's already bookmarked into view shouldn't "pop") the icon
- * snaps down and springs back with a slight overshoot, plus a color
- * crossfade between the muted/accent tints.
  */
 @Composable
 fun AnimatedBookmarkIcon(

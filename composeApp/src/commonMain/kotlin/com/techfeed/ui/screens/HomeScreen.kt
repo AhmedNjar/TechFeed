@@ -44,24 +44,6 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import techfeed.composeapp.generated.resources.Res
 import techfeed.composeapp.generated.resources.rounded_bookmark_24
 
-/**
- * ── Responsive strategy ─────────────────────────────────────────────────────
- *
- * Rather than branching the whole layout tree on device type, most of the
- * responsiveness here comes from two composable-level techniques that adapt
- * continuously to whatever width is actually available:
- *
- *  1. The feed itself is a [LazyVerticalGrid] with [GridCells.Adaptive] — it
- *     naturally renders as a single column on a narrow phone and multiple
- *     columns on a tablet/desktop-wide window, with no manual breakpoints.
- *
- *  2. [WindowSizeInfo], derived once from [BoxWithConstraints] here at the
- *     root, drives the few structural decisions that a grid alone can't
- *     express: showing the article side-by-side with the list instead of as
- *     a full-screen overlay once there's room for both, and presenting the
- *     Bookmarks/For You/Stats screens as a centered panel instead of an
- *     edge-to-edge sheet on the same wide layouts.
- */
 @Composable
 fun HomeScreen(
     viewModel: FeedViewModel,

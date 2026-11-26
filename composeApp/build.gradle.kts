@@ -70,6 +70,10 @@ kotlin {
             implementation(libs.ktor.client.darwin)
             implementation(libs.sqldelight.native.driver)
         }
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+        }
     }
 }
 
@@ -82,7 +86,7 @@ sqldelight {
 }
 
 android {
-    namespace   = "com.example.techfeed" // Matched to MainActivity package
+    namespace   = "com.techfeed"
     compileSdk  = libs.versions.android.compileSdk.get().toInt()
     
     defaultConfig {

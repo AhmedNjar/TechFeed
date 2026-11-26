@@ -1,4 +1,4 @@
-package com.example.techfeed
+package com.techfeed
 
 interface Platform {
     val name: String

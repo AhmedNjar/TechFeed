@@ -42,13 +42,6 @@ import techfeed.composeapp.generated.resources.Res
 import techfeed.composeapp.generated.resources.nasa
 import techfeed.composeapp.generated.resources.outline_open_in_browser_24
 
-/**
- * The reading-width cap applied on Medium/Expanded windows — an unconstrained
- * line length on a tablet or desktop-wide pane is genuinely harder to read,
- * so the text column centers itself within this max width instead of
- * stretching edge to edge. The hero image is unaffected (still spans the
- * full pane) since a wide image reads fine either way.
- */
 private val ReadingMaxWidth = 720.dp
 private val DetailTitleStyle = TechFeedType.DisplayLarge.copy(fontSize = 28.sp, lineHeight = 34.sp)
 

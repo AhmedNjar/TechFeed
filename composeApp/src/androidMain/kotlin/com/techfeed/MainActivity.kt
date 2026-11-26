@@ -1,4 +1,4 @@
-package com.example.techfeed
+package com.techfeed
 
 import android.app.Application
 import android.content.Intent
